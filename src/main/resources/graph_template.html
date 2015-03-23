@@ -23,6 +23,8 @@
 
 <script type="text/javascript">
 
+</script>
+<script type="text/javascript">
   var options = {
     smoothCurves: false,
     __edge_style
@@ -31,7 +33,7 @@
         enabled: true,
          gravitationalConstant: -20000,
          centralGravity: 0.1,
-         springLength: 45,
+         springLength: 100,
          springConstant: 0.04,
          damping: 2
       },
@@ -44,6 +46,22 @@
 //      },
     },
     groups: {
+        Generic : {
+          allowedToMoveX: true,
+          allowedToMoveY:true,
+          shape: 'ellipse'
+        },
+        Clique : {
+          allowedToMoveX: true,
+          allowedToMoveY:true,
+          shape: 'ellipse'
+        },
+        Separator : {
+          allowedToMoveX: true,
+          allowedToMoveY:true,
+          shape: 'box',
+          radius: 0
+        },
         DiscreteChance : {
           allowedToMoveX: true,
           allowedToMoveY:true,
@@ -99,8 +117,6 @@ __edge_data
     edges: edges
   };
   var network = new vis.Network(container, data, options);
-
-
 
 
 
