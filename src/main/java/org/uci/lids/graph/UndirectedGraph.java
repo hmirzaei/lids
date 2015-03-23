@@ -173,25 +173,6 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
             prev_b_lambda = bLambda;
             visited.add(maxCardinalityVertex.getContent());
         }
-//        JunctionTreeNode<E> clique = new JunctionTreeNode<E>(prev_b_lambda, JunctionTreeNode.Type.Clique);
-//        for(E e: prev_b_lambda)
-//            if (assignedCliques.containsKey(e))
-//                assignedCliques.get(e).add(clique);
-//            else {
-//                Set<JunctionTreeNode<E>> s = new HashSet<JunctionTreeNode<E>>();
-//                s.add(clique);
-//                assignedCliques.put(e, s);
-//            }
-//
-//        Set<E> separator = new HashSet<E>();
-//        for (E lambda: prev_b_lambda) {
-//            if (cliqueUnion.contains(lambda))
-//                separator.add(lambda);
-//        }
-//        junctionTree.addNode(clique);
-//        JunctionTreeNode<E> separatorClique = new JunctionTreeNode<E>(separator, JunctionTreeNode.Type.Separator);
-//        junctionTree.addNode(separatorClique);
-//        junctionTree.addLink(clique, separatorClique);
 
 
         return junctionTree;
@@ -199,7 +180,7 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
 
     @Override
     protected UndirectedGraph<E> clone() throws CloneNotSupportedException {
-        UndirectedGraph<E> ug = (UndirectedGraph<E>) super.clone();
+        UndirectedGraph<E> ug = new UndirectedGraph<E>();
 
         for (E e : this.vertices.keySet()) {
             ug.addNode(e);
