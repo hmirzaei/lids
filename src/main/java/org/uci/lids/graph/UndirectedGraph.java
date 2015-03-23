@@ -41,24 +41,14 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
 
         try {
             UndirectedGraph<E> tmpGraph = this.clone();
-
-
-            Integer[] degrees = new Integer[tmpGraph.numberOfNodes()];
-            UndirectedVertex<E>[] vertices = new UndirectedVertex[tmpGraph.numberOfNodes()];
-
-            int ind = 0;
+            MinHeap<Integer, UndirectedVertex<E>> degreeHeap = new MinHeap<Integer, UndirectedVertex<E>>();
 
             for (UndirectedVertex<E> vertex : tmpGraph.vertices.values()) {
-                degrees[ind] = vertex.getDegree();
-                vertices[ind] = vertex;
-                ind++;
+                degreeHeap.put(vertex.getDegree(), vertex);
             }
 
-            MinHeap<Integer, UndirectedVertex<E>> degreeHeap =
-                    new MinHeap<Integer, UndirectedVertex<E>>(degrees, vertices);
-
-            while (degreeHeap.heapSize() > 0) {
-                UndirectedVertex<E> minDegreeVertex = degreeHeap.removeMin().getValue();
+            while (degreeHeap.size() > 0) {
+                UndirectedVertex<E> minDegreeVertex = degreeHeap.remove().getValue();
 
                 for (E e1 : minDegreeVertex.getAdjacents()) {
                     for (E e2 : minDegreeVertex.getAdjacents()) {
@@ -67,52 +57,45 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
                             tmpGraph.addLink(e1, e2);
                         }
                     }
-                    degreeHeap.remove(this.vertices.get(e1));
-                    degreeHeap.insert(this.vertices.get(e1).getDegree(), this.vertices.get(e1));
+                    degreeHeap.remove(tmpGraph.vertices.get(e1));
+                    degreeHeap.put(tmpGraph.vertices.get(e1).getDegree() - 1, tmpGraph.vertices.get(e1));
                 }
+
                 tmpGraph.removeNode(minDegreeVertex.getContent());
             }
 
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
         }
-
-
     }
 
     public UndirectedGraph<JunctionTreeNode<E>> getJunctionTree() {
 
         UndirectedGraph<JunctionTreeNode<E>> junctionTree = new UndirectedGraph<JunctionTreeNode<E>>();
-        UndirectedVertex<E>[] vertices = new UndirectedVertex[this.numberOfNodes()];
-        Integer[] cardInit = new Integer[this.numberOfNodes()];
         Set<E> visited = new HashSet<E>();
         Set<E> bLambda = null;
         Set<E> prev_b_lambda = new HashSet<E>();
         Set<E> cliqueUnion = new HashSet<E>();
         Map<E, Set<JunctionTreeNode<E>>> assignedCliques = new HashMap<E, Set<JunctionTreeNode<E>>>();
         UndirectedVertex<E> maxCardinalityVertex = null;
+        MinHeap<Integer, UndirectedVertex<E>> cardinalities = new MinHeap<Integer, UndirectedVertex<E>>();
 
         int prevPi = Integer.MAX_VALUE;
         int pi = 0;
 
-        int ind = 0;
         for (UndirectedVertex<E> vertex : this.vertices.values()) {
-            cardInit[ind] = 0;
-            vertices[ind] = vertex;
-            ind++;
+            cardinalities.put(0, vertex);
         }
 
-        MinHeap<Integer, UndirectedVertex<E>> cardinalities =
-                new MinHeap<Integer, UndirectedVertex<E>>(cardInit, vertices);
 
         boolean finished = false;
         while (!finished) {
-            if (cardinalities.heapSize() > 0) {
-                maxCardinalityVertex = cardinalities.removeMin().getValue();
+            if (cardinalities.size() > 0) {
+                maxCardinalityVertex = cardinalities.remove().getValue();
                 for (E e : maxCardinalityVertex.getAdjacents()) {
                     if (cardinalities.contains(this.vertices.get(e))) {
                         int cardinality = cardinalities.remove(this.vertices.get(e));
-                        cardinalities.insert(cardinality - 1, this.vertices.get(e));
+                        cardinalities.put(cardinality - 1, this.vertices.get(e));
                     }
                 }
                 bLambda = new HashSet<E>();
