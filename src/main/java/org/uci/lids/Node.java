@@ -13,16 +13,34 @@ public class Node implements Visualizable {
     private Category category;
     private int size;
     private String label;
-    private float[] potential;
+    private double[] potential;
+    private String[] states;
 
-    public Node(VariableType variableType, Category category, int size, String label, float[] potential) {
+    public Node(VariableType variableType, Category category, String label) {
         this.uid = UUID.randomUUID();
         this.variableType = variableType;
         this.category = category;
-        this.size = size;
         this.label = label;
-        this.potential = potential;
+    }
 
+    public int getSize() {
+        return states.length;
+    }
+
+    public double[] getPotential() {
+        return potential;
+    }
+
+    public void setPotential(double[] potential) {
+        this.potential = potential;
+    }
+
+    public String[] getStates() {
+        return states;
+    }
+
+    public void setStates(String[] states) {
+        this.states = states;
     }
 
     public String nodeType() {
@@ -32,8 +50,7 @@ public class Node implements Visualizable {
         else
             typeString = "Discrete";
 
-        String nodeTypeStr = typeString + category.toString();
-        return nodeTypeStr;
+        return typeString + category.toString();
     }
 
     public UUID getUid() {
@@ -48,9 +65,6 @@ public class Node implements Visualizable {
         return category;
     }
 
-    public int Size() {
-        return size;
-    }
 
     public String Label() {
         return label;

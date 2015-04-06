@@ -1,9 +1,7 @@
 package org.uci.lids.graph;
 
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 
 /**
  * Project: ${PROJECT_NAME}
@@ -15,9 +13,22 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
         vertices = new LinkedHashMap<E, DirectedVertex<E>>();
     }
 
+    public DirectedGraph() {
+    }
+
+    public DirectedGraph(Set<E> nodes) {
+        for (E e : nodes)
+            addNode(e);
+    }
+
     @Override
     public void addNode(E e) {
         this.vertices.put(e, new DirectedVertex<E>(e));
+    }
+
+    @Override
+    public Set<E> getNodes() {
+        return Collections.unmodifiableSet(vertices.keySet());
     }
 
     @Override
@@ -58,8 +69,49 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
         return ug;
     }
 
+    private void doDFSForTopologicalOrdering(LinkedList<E> Output, Set<E> visited, Set<E> ordered, E e) {
+        for (E child : vertices.get(e).getChildren()) {
+            if (!visited.contains(child)) {
+                visited.add(child);
+                doDFSForTopologicalOrdering(Output, visited, ordered, child);
+            }
+        }
+        if (!ordered.contains(e)) {
+            ordered.add(e);
+            Output.addFirst(e);
+        }
+    }
 
-    public UndirectedGraph getMoralizedUndirectedCopy() {
+    public LinkedList<E> getTopologicalOrderedNodes() {
+        LinkedList<E> result = new LinkedList<E>();
+        Set<E> visited = new HashSet<E>();
+        Set<E> ordered = new HashSet<E>();
+
+        for (E e : vertices.keySet()) {
+            if (!visited.contains(e)) {
+                doDFSForTopologicalOrdering(result, visited, ordered, e);
+            }
+        }
+
+        return result;
+    }
+
+    public Set<E> getParents(E e) {
+        return Collections.unmodifiableSet(vertices.get(e).getParents());
+    }
+
+    public Set<E> getChildren(E e) {
+        return Collections.unmodifiableSet(vertices.get(e).getChildren());
+    }
+
+    public Set<E> getFamily(E e) {
+        Set<E> family = new LinkedHashSet<E>(getParents(e));
+        family.add(e);
+        return Collections.unmodifiableSet(family);
+    }
+
+
+    public UndirectedGraph<E> getMoralizedUndirectedCopy() {
         UndirectedGraph<E> ug = this.getUndirectedCopy();
 
         List<E> sources = new ArrayList<E>();
@@ -83,8 +135,8 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
     }
 
 
-    public String generateVisualizationHtml() {
-        return super.generateVisualizationHtml(true);
+    public String generateVisualizationHtml(String title) {
+        return super.generateVisualizationHtml(true, title);
     }
 
 }

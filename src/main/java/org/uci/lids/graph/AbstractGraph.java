@@ -2,10 +2,7 @@ package org.uci.lids.graph;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 /**
  * Created by hamid on 3/17/15.
@@ -14,6 +11,8 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
     protected LinkedHashMap<E, Vertex> vertices;
 
     public abstract void addNode(E e);
+
+    public abstract Set<E> getNodes();
 
     public abstract void removeNode(E e);
 
@@ -33,7 +32,7 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
     }
 
 
-    protected String generateVisualizationHtml(boolean directed) {
+    protected String generateVisualizationHtml(boolean directed, String title) {
 
         String htmlString = "";
         try {
@@ -56,17 +55,18 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
 
         StringBuilder edgeString = new StringBuilder();
         for (Edge<E> e : getEdgeList()) {
-            edgeString.append(String.format("{from: %d, to: %s},\n", e.getVertex1().hashCode(), e.getVertex2().hashCode()));
+            edgeString.append(String.format("{from: %d, to: %s},\n", e.getNode1().hashCode(), e.getNode2().hashCode()));
         }
 
         if (directed)
-            htmlString = htmlString.replace("__edge_style", "edges: {style: 'arrow',},");
+            htmlString = htmlString.replace("__edge_style__", "edges: {style: 'arrow',},");
         else
-            htmlString = htmlString.replace("__edge_style", "");
+            htmlString = htmlString.replace("__edge_style__", "");
 
 
-        htmlString = htmlString.replace("__node_data", nodeString.toString());
-        htmlString = htmlString.replace("__edge_data", edgeString.toString());
+        htmlString = htmlString.replace("__node_data__", nodeString.toString());
+        htmlString = htmlString.replace("__edge_data__", edgeString.toString());
+        htmlString = htmlString.replace("__page_title__", title);
 
         return htmlString;
     }

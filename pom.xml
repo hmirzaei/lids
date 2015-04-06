@@ -43,6 +43,7 @@
             <version>3.8.1</version>
             <scope>test</scope>
         </dependency>
+
     </dependencies>
 
     <reporting>
@@ -64,7 +65,7 @@
                     </additionalparam>
                     <!--<additionalparam> -enumconstants -inferrel -inferdep -hide java.*</additionalparam>-->
 
-                    <show>private</show>
+                    <show>public</show>
                 </configuration>
             </plugin>
 

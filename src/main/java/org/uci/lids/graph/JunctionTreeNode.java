@@ -6,15 +6,18 @@ import java.util.UUID;
 /**
  * Created by Hamid Mirzaei on 3/22/15.
  */
-public class JunctionTreeNode<E> implements Visualizable {
+@SuppressWarnings("EqualsWhichDoesntCheckParameterClass")
+public abstract class JunctionTreeNode<E> implements Visualizable {
     private UUID uid;
     private Set<E> members;
-    private Type type;
 
-    public JunctionTreeNode(Set<E> members, Type type) {
+    public JunctionTreeNode(Set<E> members) {
         this.uid = UUID.randomUUID();
         this.members = members;
-        this.type = type;
+    }
+
+    public Set<E> getMembers() {
+        return members;
     }
 
     public UUID getUid() {
@@ -32,9 +35,7 @@ public class JunctionTreeNode<E> implements Visualizable {
         return sb.toString();
     }
 
-    public String nodeType() {
-        return type.toString();
-    }
+    public abstract String nodeType();
 
     @Override
     public boolean equals(Object obj) {
@@ -45,10 +46,5 @@ public class JunctionTreeNode<E> implements Visualizable {
     public int hashCode() {
         return uid.hashCode();
     }
-
-    public enum Type {
-        Clique, Separator
-    }
-
 
 }

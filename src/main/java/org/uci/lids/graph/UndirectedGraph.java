@@ -12,9 +12,18 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         vertices = new LinkedHashMap<E, UndirectedVertex<E>>();
     }
 
+    public Set<E> getAdjacents(E e) {
+        return Collections.unmodifiableSet(vertices.get(e).getAdjacents());
+    }
+
     @Override
     public void addNode(E e) {
         this.vertices.put(e, new UndirectedVertex<E>(e));
+    }
+
+    @Override
+    public Set<E> getNodes() {
+        return Collections.unmodifiableSet(vertices.keySet());
     }
 
     @Override
@@ -23,7 +32,7 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
 
         for (E parent : vertices.keySet()) {
             for (E child : vertices.get(parent).getAdjacents()) {
-                retVal.add(new Edge(vertices.get(parent), vertices.get(child)));
+                retVal.add(new Edge<E>(vertices.get(parent).content, vertices.get(child).content));
             }
         }
         return retVal;
@@ -112,7 +121,7 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
 
 
             if (pi < prevPi + 1) {
-                JunctionTreeNode<E> clique = new JunctionTreeNode<E>(prev_b_lambda, JunctionTreeNode.Type.Clique);
+                JunctionTreeNode<E> clique = new CliqueNode<E>(prev_b_lambda);
 
                 Set<E> separator = new HashSet<E>();
                 for (E lambda : prev_b_lambda) {
@@ -121,7 +130,7 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
                 }
                 junctionTree.addNode(clique);
                 if (!separator.isEmpty()) {
-                    JunctionTreeNode<E> separatorClique = new JunctionTreeNode<E>(separator, JunctionTreeNode.Type.Separator);
+                    JunctionTreeNode<E> separatorClique = new SeparatorNode<E>(separator);
                     junctionTree.addNode(separatorClique);
                     junctionTree.addLink(clique, separatorClique);
 
@@ -161,6 +170,33 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         return junctionTree;
     }
 
+    private void addTreeLinks(DirectedGraph<E> g, Set<E> v, E e, Boolean d) {
+        v.add(e);
+        for (E e2 : vertices.get(e).getAdjacents())
+            if (!v.contains(e2)) {
+                if (d)
+                    g.addLink(e, e2);
+                else
+                    g.addLink(e2, e);
+
+                addTreeLinks(g, v, e2, d);
+            }
+    }
+
+    public DirectedGraph<E> getTreeSinkTo(E root) {
+        Set<E> visited = new HashSet<E>();
+        DirectedGraph<E> result = new DirectedGraph<E>(this.getNodes());
+        addTreeLinks(result, visited, root, false);
+        return result;
+    }
+
+    public DirectedGraph<E> getTreeSourceFrom(E root) {
+        Set<E> visited = new HashSet<E>();
+        DirectedGraph<E> result = new DirectedGraph<E>(this.getNodes());
+        addTreeLinks(result, visited, root, true);
+        return result;
+    }
+
     @Override
     protected UndirectedGraph<E> clone() throws CloneNotSupportedException {
         UndirectedGraph<E> ug = new UndirectedGraph<E>();
@@ -177,8 +213,8 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         return ug;
     }
 
-    public String generateVisualizationHtml() {
-        return super.generateVisualizationHtml(false);
+    public String generateVisualizationHtml(String title) {
+        return super.generateVisualizationHtml(false, title);
     }
 
 }
