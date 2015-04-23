@@ -17,37 +17,17 @@ public class LQGInfluenceDiagram {
         this.bayesianNetwork = bayesianNetwork;
     }
 
-    private Potential getNodePotential(Node node) {
+    public Potential getNodePotential(Node node) {
         return new Potential(bayesianNetwork.getFamily(node), node.getPotential());
     }
 
     public Map<Node, Potential> getMarginals() {
-        UndirectedGraph<Node> moralized = this.bayesianNetwork.getMoralizedUndirectedCopy();
-        moralized.triangulate();
-        UndirectedGraph<JunctionTreeNode<Node>> jt = moralized.getJunctionTree();
-
-        Iterator<JunctionTreeNode<Node>> it = jt.getNodes().iterator();
-        JunctionTreeNode<Node> root;
-        do {
-            root = it.next();
-        } while (jt.getAdjacents(root).size() > 1);
-
-
-        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = getCliquePotentials(jt);
         Map<JunctionTreeNode<Node>, Potential> cliqueMarginals = new HashMap<JunctionTreeNode<Node>, Potential>();
-        Map<Edge<JunctionTreeNode<Node>>, Potential> messages = getInitializedMessages(jt);
 
-
-        DirectedGraph<JunctionTreeNode<Node>> jtd = jt.getTreeSinkTo(root);
-        List<JunctionTreeNode<Node>> topologicalSorted = jtd.getTopologicalOrderedNodes();
-        performMessagePassing(jt, jtd, cliquePotentials, cliqueMarginals, topologicalSorted, messages);
-
-
-        jtd = jt.getTreeSourceFrom(root);
-        topologicalSorted = jtd.getTopologicalOrderedNodes();
-        performMessagePassing(jt, jtd, cliquePotentials, cliqueMarginals, topologicalSorted, messages);
-
-
+        List<DirectedGraph<Node>> connectedComponents = this.bayesianNetwork.getConnectedComponents();
+        for (DirectedGraph<Node> graph : connectedComponents) {
+            getConnectedComponentMarginal(graph, cliqueMarginals);
+        }
         Map<Node, Potential> result = new HashMap<Node, Potential>();
         for (Map.Entry<JunctionTreeNode<Node>, Potential> entry : cliqueMarginals.entrySet()) {
             for (Node node : entry.getKey().getMembers()) {
@@ -57,13 +37,38 @@ public class LQGInfluenceDiagram {
             }
         }
         return result;
+    }
 
+    private void getConnectedComponentMarginal(DirectedGraph<Node> graph, Map<JunctionTreeNode<Node>, Potential> cliqueMarginals) {
+        UndirectedGraph<Node> moralized = graph.getMoralizedUndirectedCopy();
+        moralized.triangulate();
+        UndirectedGraph<JunctionTreeNode<Node>> jt = moralized.getJunctionTree();
+
+
+        Iterator<JunctionTreeNode<Node>> it = jt.getNodes().iterator();
+        JunctionTreeNode<Node> root;
+        do {
+            root = it.next();
+        } while (jt.getAdjacents(root).size() > 1);
+
+        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = getCliquePotentials(graph, jt);
+        Map<Edge<JunctionTreeNode<Node>>, Potential> messages = getInitializedMessages(jt);
+
+        DirectedGraph<JunctionTreeNode<Node>> jtd = jt.getTreeSinkTo(root);
+        List<JunctionTreeNode<Node>> topologicalSorted = jtd.getTopologicalOrderedNodes();
+        performMessagePassing(jt, jtd, cliquePotentials, cliqueMarginals, topologicalSorted, messages, false);
+
+        jtd = jt.getTreeSourceFrom(root);
+
+        topologicalSorted = jtd.getTopologicalOrderedNodes();
+        performMessagePassing(jt, jtd, cliquePotentials, cliqueMarginals, topologicalSorted, messages, true);
     }
 
     private void performMessagePassing(UndirectedGraph<JunctionTreeNode<Node>> jt, DirectedGraph<JunctionTreeNode<Node>> jtd,
                                        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials, Map<JunctionTreeNode<Node>,
             Potential> cliqueMarginals, List<JunctionTreeNode<Node>> topologicalSorted,
-                                       Map<Edge<JunctionTreeNode<Node>>, Potential> messages) {
+                                       Map<Edge<JunctionTreeNode<Node>>, Potential> messages, boolean calculateMarginals) {
+
 
         for (JunctionTreeNode<Node> jtNode : topologicalSorted) {
             if (jtNode instanceof CliqueNode) {
@@ -78,6 +83,7 @@ public class LQGInfluenceDiagram {
                     for (JunctionTreeNode<Node> parent : parents) {
                         s.add(messages.get(new Edge<JunctionTreeNode<Node>>(parent, jtNode)));
                     }
+
                     Potential p = Potential.multiply(s);
                     Potential p2 = p.project(child.getMembers());
                     JunctionTreeNode<Node> grandChild = jtd.getChildren(child).iterator().next();
@@ -86,7 +92,7 @@ public class LQGInfluenceDiagram {
                     messages.put(e, message.multiply(p2));
                 }
 
-                if (children.isEmpty()) {
+                if (calculateMarginals) {
                     Set<JunctionTreeNode<Node>> parents = new HashSet<JunctionTreeNode<Node>>(adjacents);
 
                     Set<Potential> s = new HashSet<Potential>(cliquePotentials.get(jtNode));
@@ -106,18 +112,19 @@ public class LQGInfluenceDiagram {
         for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
             if (jtNode instanceof SeparatorNode)
                 for (JunctionTreeNode<Node> adjacent : jt.getAdjacents(jtNode))
-                    messages.put(new Edge<JunctionTreeNode<Node>>(jtNode, adjacent),
-                            new Potential(Collections.<Node>emptySet(), new double[]{1}));
+                    messages.put(new Edge<JunctionTreeNode<Node>>(jtNode, adjacent), Potential.unityPotential());
         }
         return messages;
     }
 
-    private Map<JunctionTreeNode<Node>, Set<Potential>> getCliquePotentials(UndirectedGraph<JunctionTreeNode<Node>> jt) {
+    private Map<JunctionTreeNode<Node>, Set<Potential>> getCliquePotentials(DirectedGraph<Node> graph, UndirectedGraph<JunctionTreeNode<Node>> jt) {
         Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = new HashMap<JunctionTreeNode<Node>, Set<Potential>>();
+        Set<Node> nodesCopy = new HashSet<Node>(graph.getNodes());
         for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
             if (jtNode instanceof CliqueNode) {
-                for (Node node : bayesianNetwork.getNodes()) {
-                    if (jtNode.getMembers().containsAll(bayesianNetwork.getFamily(node))) {
+                Set<Node> nodesToRemove = new HashSet<Node>();
+                for (Node node : nodesCopy) {
+                    if (jtNode.getMembers().containsAll(graph.getFamily(node))) {
                         Potential p = getNodePotential(node);
                         if (cliquePotentials.containsKey(jtNode))
                             cliquePotentials.get(jtNode).add(p);
@@ -126,7 +133,14 @@ public class LQGInfluenceDiagram {
                             s.add(p);
                             cliquePotentials.put(jtNode, s);
                         }
+                        nodesToRemove.add(node);
                     }
+                }
+                nodesCopy.removeAll(nodesToRemove);
+                if (!cliquePotentials.containsKey(jtNode)) {
+                    Set<Potential> s = new HashSet<Potential>();
+                    s.add(Potential.unityPotential());
+                    cliquePotentials.put(jtNode, s);
                 }
             }
         }

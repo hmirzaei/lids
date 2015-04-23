@@ -21,7 +21,6 @@ public class Potential {
         this.data = new double[getTotalSize()];
     }
 
-
     public static Potential multiply(Set<Potential> potentialSet) {
         Iterator<Potential> it = potentialSet.iterator();
         Potential result = it.next();
@@ -30,6 +29,14 @@ public class Potential {
             result = result.multiply(it.next());
         }
         return result;
+    }
+
+    public static Potential unityPotential() {
+        return new Potential(Collections.<Node>emptySet(), new double[]{1});
+    }
+
+    public double[] getData() {
+        return data;
     }
 
     public Potential multiply(Potential p) {
@@ -67,6 +74,8 @@ public class Potential {
     }
 
     public Potential project(Set<Node> variables) {
+        variables = new HashSet<Node>(variables);  // make a copy
+        variables.retainAll(this.variables);
         Potential result = new Potential(variables);
 
         ArrayList<Node> thisVars = new ArrayList<Node>(this.variables);
@@ -87,6 +96,7 @@ public class Potential {
             List<Integer> projectionInd = new ArrayList<Integer>();
             for (int j : projectionBits)
                 projectionInd.add(ind.get(j));
+
             result.data[result.getPotPosition(projectionInd)] += this.data[this.getPotPosition(ind)];
 
         }
@@ -114,7 +124,6 @@ public class Potential {
         }
         return position;
     }
-
 
     public int getTotalSize() {
         int totalSize = 1;
@@ -154,4 +163,5 @@ public class Potential {
         return sb.toString();
         //return variables.toString();
     }
+
 }

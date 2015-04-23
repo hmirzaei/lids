@@ -27,8 +27,8 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
     }
 
     @Override
-    public List<Edge> getEdgeList() {
-        List<Edge> retVal = new ArrayList<Edge>();
+    public List<Edge<E>> getEdgeList() {
+        List<Edge<E>> retVal = new ArrayList<Edge<E>>();
 
         for (E parent : vertices.keySet()) {
             for (E child : vertices.get(parent).getAdjacents()) {

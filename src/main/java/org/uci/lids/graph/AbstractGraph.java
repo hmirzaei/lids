@@ -16,7 +16,9 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
 
     public abstract void removeNode(E e);
 
-    public abstract List<Edge> getEdgeList();
+    public abstract List<Edge<E>> getEdgeList();
+
+    public abstract String generateVisualizationHtml(String title);
 
 
     public void addLink(E node1, E node2) {
@@ -25,10 +27,6 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
 
     public void removeLink(E node1, E node2) {
         this.vertices.get(node1).removeLinkTo(vertices.get(node2));
-    }
-
-    public int numberOfNodes() {
-        return vertices.size();
     }
 
 

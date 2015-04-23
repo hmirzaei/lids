@@ -7,7 +7,7 @@ import java.util.UUID;
 /**
  * Created by hamid on 3/9/15.
  */
-public class Node implements Visualizable {
+public class Node implements Visualizable, Comparable<Node> {
     private UUID uid;
     private VariableType variableType;
     private Category category;
@@ -89,6 +89,14 @@ public class Node implements Visualizable {
         return label;
     }
 
+    public int compareTo(Node n) {
+        if (label.matches("-?\\d+(\\.\\d+)?")) {
+            return ((Double) Double.parseDouble(this.label)).compareTo(Double.parseDouble(n.label));
+        } else {
+            return this.label.compareTo(n.label);
+        }
+    }
+
     public enum Category {
         Chance, Decision, Utility
     }
@@ -96,4 +104,6 @@ public class Node implements Visualizable {
     public enum VariableType {
         Binary, Categorical, Continuous
     }
+
+
 }

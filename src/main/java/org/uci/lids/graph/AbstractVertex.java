@@ -23,7 +23,6 @@ public abstract class AbstractVertex<E, V> {
         return content;
     }
 
-
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof AbstractVertex) {

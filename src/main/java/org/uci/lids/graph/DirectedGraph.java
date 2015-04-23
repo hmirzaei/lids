@@ -21,6 +21,10 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
             addNode(e);
     }
 
+    private DirectedGraph(LinkedHashMap<E, DirectedVertex<E>> vertices) {
+        this.vertices = vertices;
+    }
+
     @Override
     public void addNode(E e) {
         this.vertices.put(e, new DirectedVertex<E>(e));
@@ -32,12 +36,12 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
     }
 
     @Override
-    public List<Edge> getEdgeList() {
-        List<Edge> retVal = new ArrayList<Edge>();
+    public List<Edge<E>> getEdgeList() {
+        List<Edge<E>> retVal = new ArrayList<Edge<E>>();
 
         for (E parent : vertices.keySet()) {
             for (E child : vertices.get(parent).getChildren()) {
-                retVal.add(new Edge(vertices.get(parent), vertices.get(child)));
+                retVal.add(new Edge(vertices.get(parent).content, vertices.get(child).content));
             }
         }
         return retVal;
@@ -110,7 +114,6 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
         return Collections.unmodifiableSet(family);
     }
 
-
     public UndirectedGraph<E> getMoralizedUndirectedCopy() {
         UndirectedGraph<E> ug = this.getUndirectedCopy();
 
@@ -134,9 +137,34 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
         return ug;
     }
 
-
     public String generateVisualizationHtml(String title) {
         return super.generateVisualizationHtml(true, title);
+    }
+
+    private void doDFSForConnectedComponents(UndirectedGraph<E> skeleton, LinkedHashMap<E, DirectedVertex<E>> vertices, Set<E> visited, E e) {
+        visited.add(e);
+        for (E child : skeleton.vertices.get(e).getAdjacents()) {
+            if (!visited.contains(child)) {
+                vertices.put(child, this.vertices.get(child));
+                doDFSForConnectedComponents(skeleton, vertices, visited, child);
+            }
+        }
+    }
+
+    public List<DirectedGraph<E>> getConnectedComponents() {
+        UndirectedGraph<E> skeleton = this.getUndirectedCopy();
+        List<DirectedGraph<E>> result = new LinkedList<DirectedGraph<E>>();
+        Set<E> visited = new HashSet<E>();
+        for (E e : skeleton.vertices.keySet()) {
+            if (!visited.contains(e)) {
+                LinkedHashMap<E, DirectedVertex<E>> vertices = new LinkedHashMap<E, DirectedVertex<E>>();
+                vertices.put(e, this.vertices.get(e));
+                doDFSForConnectedComponents(skeleton, vertices, visited, e);
+                result.add(new DirectedGraph<E>(vertices));
+            }
+        }
+        //System.out.println("result = " + result);
+        return result;
     }
 
 }

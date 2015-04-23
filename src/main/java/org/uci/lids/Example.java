@@ -1,57 +1,81 @@
 package org.uci.lids;
 
 import org.uci.lids.graph.DirectedGraph;
+import org.uci.lids.utils.Misc;
+import org.uci.lids.utils.Potential;
 
-import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 
 public class Example {
 
-
     public static void main(String[] args) {
-
         List<Node> nodes = new ArrayList<Node>();
-        final int N = 6;
+        final int N = 1000;
+        final int NO_STATES = 3;
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
 
         for (int i = 0; i < N; i++) {
-            Node node = new Node(Node.VariableType.Categorical, Node.Category.Chance, Character.toString((char) ('a' + i)));
-            node.setStates(new String[]{"0", "1"});
+            Node node = new Node(Node.VariableType.Categorical, Node.Category.Chance, Integer.toString(i));
+
+            String[] sa = new String[NO_STATES];
+            for (int j = 0; j < NO_STATES; j++) {
+                sa[j] = Integer.toString(j);
+            }
+            node.setStates(sa);
             nodes.add(node);
             bn.addNode(node);
         }
-        Node a = nodes.get(0);
-        Node b = nodes.get(1);
-        Node c = nodes.get(2);
-        Node d = nodes.get(3);
-        Node e = nodes.get(4);
-        Node f = nodes.get(5);
 
-        a.setPotential(new double[]{0.5f, 0.2f, 0.2f, 0.7f, 0.5f, 0.8f, 0.8f, 0.3f});
-        b.setPotential(new double[]{0.1f, 0.6f, 0.9f, 0.4f});
-        c.setPotential(new double[]{0.1f, 0.6f, 0.9f, 0.4f});
-        d.setPotential(new double[]{0.1f, 0.6f, 0.9f, 0.4f});
-        e.setPotential(new double[]{0.2f, 0.8f});
-        f.setPotential(new double[]{0.1f, 0.6f, 0.9f, 0.4f});
 
-        bn.addLink(a, d);
-        bn.addLink(b, a);
-        bn.addLink(b, c);
-        bn.addLink(c, a);
-        bn.addLink(c, f);
-        bn.addLink(e, b);
-
-        try {
-            PrintWriter writer = new PrintWriter("graph.htm", "UTF-8");
-            writer.println(bn.generateVisualizationHtml("Bayesian Network"));
-            writer.close();
-        } catch (Exception e1) {
-            e1.printStackTrace();
+        for (int i = 0; i < N; i++) {
+            for (int j = i + 1; j < N; j++) {
+                bn.addLink(nodes.get(i), nodes.get(j));
+            }
         }
 
+        Random r = new Random(10);
+        for (int k = 0; k < 6.56 * (N * N); k++) {
+            int i = r.nextInt(N);
+            int j = r.nextInt(N);
+            bn.removeLink(nodes.get(i), nodes.get(j));
+        }
+        Misc.saveGraphOnDisk("graph.htm", "Bayesian Network", bn);
+
+
+        for (int i = 0; i < N; i++) {
+            Set<Node> parents = bn.getParents(nodes.get(i));
+            int size = (int) Math.round(Math.pow(NO_STATES, parents.size() + 1));
+            double[] potential = new double[size];
+            for (int j = 0; j < size; j++) {
+                potential[j] = r.nextDouble();
+            }
+
+            for (int k = 0; k < size / NO_STATES; k++) {
+                double sum = 0;
+                for (int j = k; j < size; j += size / NO_STATES) {
+                    sum += potential[j];
+                }
+                for (int j = k; j < size; j += size / NO_STATES) {
+                    potential[j] /= sum;
+                }
+            }
+            nodes.get(i).setPotential(potential);
+        }
+
+
         LQGInfluenceDiagram lid = new LQGInfluenceDiagram(bn);
-        System.out.println("lid.getMarginals() = " + lid.getMarginals());
+
+        long startTime = System.currentTimeMillis();
+        Map<Node, Potential> marginals = lid.getMarginals();
+        long estimatedTime = System.currentTimeMillis() - startTime;
+
+        marginals = new TreeMap<Node, Potential>(marginals);
+        System.out.println("marginals = " + marginals);
+        System.out.println("marginals.size() = " + marginals.size());
+
+        System.out.println("estimatedTime = " + estimatedTime / 1000.0 + " (s)");
+        Misc.writeBntScript("bnt.m", bn, nodes, NO_STATES, marginals);
+
     }
 }
