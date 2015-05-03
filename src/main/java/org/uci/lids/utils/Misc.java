@@ -118,6 +118,9 @@ public class Misc {
             }
             writer.println("];");
         }
+        writer.format("sum=zeros(%d,1);for k=0:%d,sum=sum+eval(['x' num2str(k) '-y' num2str(k)]).^2;end;",
+                noStates, N - 1).println();
+        writer.format("error = sqrt(sum)").println();
 
         writer.close();
     }
