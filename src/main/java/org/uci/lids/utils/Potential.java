@@ -8,15 +8,15 @@ import java.util.*;
  * Created by hamid on 3/25/15.
  */
 public class Potential {
-    private Set<Node> variables;
+    private LinkedHashSet<Node> variables;
     private double[] data;
 
-    public Potential(Set<Node> variables, double[] data) {
+    public Potential(LinkedHashSet<Node> variables, double[] data) {
         this.variables = variables;
         this.data = data;
     }
 
-    public Potential(Set<Node> variables) {
+    public Potential(LinkedHashSet<Node> variables) {
         this.variables = variables;
         this.data = new double[getTotalSize()];
     }
@@ -32,7 +32,8 @@ public class Potential {
     }
 
     public static Potential unityPotential() {
-        return new Potential(Collections.<Node>emptySet(), new double[]{1});
+        LinkedHashSet<Node> emptySet = new LinkedHashSet<Node>();
+        return new Potential(emptySet, new double[]{1});
     }
 
     public double[] getData() {
@@ -73,10 +74,46 @@ public class Potential {
         return result;
     }
 
+    public void applyEvidence(Node variable, int state) {
+        double[] data = new double[this.getTotalSize()];
+
+        Set<Node> variables = new LinkedHashSet<Node>(this.variables);
+        variables.remove(variable);
+        Potential tmp = new Potential((LinkedHashSet<Node>) variables);
+        ArrayList<Node> thisVars = new ArrayList<Node>(this.variables);
+        int varIndex = thisVars.indexOf(variable);
+        for (int i = 0; i < tmp.getTotalSize(); i++) {
+            List<Integer> index = tmp.getIndex(i);
+            index.add(varIndex, state);
+            data[this.getPotPosition(index)] = this.data[this.getPotPosition(index)];
+        }
+        this.data = data;
+    }
+
+    public void normalize(Node variable) {
+        double[] data = new double[this.getTotalSize()];
+
+        LinkedHashSet<Node> variables = new LinkedHashSet<Node>(this.variables);
+        variables.remove(variable);
+        Potential tmp = new Potential(variables);
+        ArrayList<Node> thisVars = new ArrayList<Node>(this.variables);
+        int varIndex = thisVars.indexOf(variable);
+        for (int i = 0; i < this.getTotalSize(); i++) {
+            List<Integer> index = this.getIndex(i);
+            index.remove(varIndex);
+            tmp.getData()[tmp.getPotPosition(index)] += this.data[i];
+        }
+        for (int i = 0; i < this.getTotalSize(); i++) {
+            List<Integer> index = this.getIndex(i);
+            index.remove(varIndex);
+            this.data[i] /= tmp.getData()[tmp.getPotPosition(index)];
+        }
+    }
+
     public Potential project(Set<Node> variables) {
-        variables = new HashSet<Node>(variables);  // make a copy
+        variables = new LinkedHashSet<Node>(variables);  // make a copy
         variables.retainAll(this.variables);
-        Potential result = new Potential(variables);
+        Potential result = new Potential((LinkedHashSet<Node>) variables);
 
         ArrayList<Node> thisVars = new ArrayList<Node>(this.variables);
         ArrayList<Node> projectionVars = new ArrayList<Node>(variables);

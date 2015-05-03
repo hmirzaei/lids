@@ -11,17 +11,38 @@ import java.util.*;
 public class LQGInfluenceDiagram {
 
     private DirectedGraph<Node> bayesianNetwork = new DirectedGraph<Node>();
+    private Map<Node, Potential> nodePotentialMap;
 
 
     public LQGInfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
         this.bayesianNetwork = bayesianNetwork;
     }
 
+    private void updateNodePotentials(Map<Node, Integer> evidences) {
+        nodePotentialMap = new HashMap<Node, Potential>();
+        for (Node n : bayesianNetwork.getNodes()) {
+            nodePotentialMap.put(n, new Potential((LinkedHashSet<Node>) bayesianNetwork.getFamily(n), n.getPotential()));
+        }
+        for (Map.Entry<Node, Integer> entry : evidences.entrySet()) {
+            Node n = entry.getKey();
+            for (Node member : bayesianNetwork.getChildren(n))
+                this.getNodePotential(member).applyEvidence(n, entry.getValue());
+            this.getNodePotential(n).applyEvidence(n, entry.getValue());
+        }
+    }
+
+
     public Potential getNodePotential(Node node) {
-        return new Potential(bayesianNetwork.getFamily(node), node.getPotential());
+        return nodePotentialMap.get(node);
     }
 
     public Map<Node, Potential> getMarginals() {
+        Map<Node, Integer> empty = new HashMap<Node, Integer>();
+        return getMarginals(empty);
+    }
+
+    public Map<Node, Potential> getMarginals(Map<Node, Integer> evidences) {
+        this.updateNodePotentials(evidences);
         Map<JunctionTreeNode<Node>, Potential> cliqueMarginals = new HashMap<JunctionTreeNode<Node>, Potential>();
 
         List<DirectedGraph<Node>> connectedComponents = this.bayesianNetwork.getConnectedComponents();
@@ -31,11 +52,17 @@ public class LQGInfluenceDiagram {
         Map<Node, Potential> result = new HashMap<Node, Potential>();
         for (Map.Entry<JunctionTreeNode<Node>, Potential> entry : cliqueMarginals.entrySet()) {
             for (Node node : entry.getKey().getMembers()) {
-                Set<Node> s = new HashSet<Node>();
+                LinkedHashSet<Node> s = new LinkedHashSet<Node>();
                 s.add(node);
                 result.put(node, entry.getValue().project(s));
             }
         }
+        if (!evidences.isEmpty()) {
+            for (Map.Entry<Node, Potential> entry : result.entrySet()) {
+                entry.getValue().normalize(entry.getKey());
+            }
+        }
+
         return result;
     }
 
@@ -87,7 +114,7 @@ public class LQGInfluenceDiagram {
                     Potential p = Potential.multiply(s);
                     Potential p2 = p.project(child.getMembers());
                     JunctionTreeNode<Node> grandChild = jtd.getChildren(child).iterator().next();
-                    Edge e = new Edge<JunctionTreeNode<Node>>(child, grandChild);
+                    Edge<JunctionTreeNode<Node>> e = new Edge<JunctionTreeNode<Node>>(child, grandChild);
                     Potential message = messages.get(e);
                     messages.put(e, message.multiply(p2));
                 }

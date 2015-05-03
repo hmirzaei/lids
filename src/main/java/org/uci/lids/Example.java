@@ -11,71 +11,49 @@ public class Example {
 
     public static void main(String[] args) {
         List<Node> nodes = new ArrayList<Node>();
-        final int N = 1000;
-        final int NO_STATES = 3;
+        final int N = 6;
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
 
         for (int i = 0; i < N; i++) {
-            Node node = new Node(Node.VariableType.Categorical, Node.Category.Chance, Integer.toString(i));
-
-            String[] sa = new String[NO_STATES];
-            for (int j = 0; j < NO_STATES; j++) {
-                sa[j] = Integer.toString(j);
-            }
-            node.setStates(sa);
+            Node node = new Node(Node.VariableType.Categorical, Node.Category.Chance, Character.toString((char) ('a' + i)));
+            node.setStates(new String[]{"0", "1"});
             nodes.add(node);
             bn.addNode(node);
         }
+        nodes.get(4).setStates(new String[]{"0", "1", "3"});
+        Node a = nodes.get(0);
+        Node b = nodes.get(1);
+        Node c = nodes.get(2);
+        Node d = nodes.get(3);
+        Node e = nodes.get(4);
+        Node f = nodes.get(5);
 
 
-        for (int i = 0; i < N; i++) {
-            for (int j = i + 1; j < N; j++) {
-                bn.addLink(nodes.get(i), nodes.get(j));
-            }
-        }
+        a.setPotential(new double[]{0.5, 0.2, 0.2, 0.7, 0.5, 0.8, 0.8, 0.3});
+        b.setPotential(new double[]{0.1, 0.2, 0.6, 0.9, 0.8, 0.4});
+        c.setPotential(new double[]{0.1, 0.6, 0.9, 0.4});
+        d.setPotential(new double[]{0.1, 0.6, 0.9, 0.4});
+        e.setPotential(new double[]{0.2, 0.5, 0.3});
+        f.setPotential(new double[]{0.1, 0.6, 0.9, 0.4});
 
-        Random r = new Random(10);
-        for (int k = 0; k < 6.56 * (N * N); k++) {
-            int i = r.nextInt(N);
-            int j = r.nextInt(N);
-            bn.removeLink(nodes.get(i), nodes.get(j));
-        }
-        Misc.saveGraphOnDisk("graph.htm", "Bayesian Network", bn);
+        bn.addLink(a, d);
+        bn.addLink(b, a);
+        bn.addLink(b, c);
+        bn.addLink(c, a);
+        bn.addLink(c, f);
+        bn.addLink(e, b);
 
-
-        for (int i = 0; i < N; i++) {
-            Set<Node> parents = bn.getParents(nodes.get(i));
-            int size = (int) Math.round(Math.pow(NO_STATES, parents.size() + 1));
-            double[] potential = new double[size];
-            for (int j = 0; j < size; j++) {
-                potential[j] = r.nextDouble();
-            }
-
-            for (int k = 0; k < size / NO_STATES; k++) {
-                double sum = 0;
-                for (int j = k; j < size; j += size / NO_STATES) {
-                    sum += potential[j];
-                }
-                for (int j = k; j < size; j += size / NO_STATES) {
-                    potential[j] /= sum;
-                }
-            }
-            nodes.get(i).setPotential(potential);
-        }
 
 
         LQGInfluenceDiagram lid = new LQGInfluenceDiagram(bn);
-
-        long startTime = System.currentTimeMillis();
-        Map<Node, Potential> marginals = lid.getMarginals();
-        long estimatedTime = System.currentTimeMillis() - startTime;
+        Map<Node, Integer> evidences = new HashMap<Node, Integer>();
+        evidences.put(b, 1);
+        evidences.put(c, 1);
+        Map<Node, Potential> marginals = lid.getMarginals(evidences);
 
         marginals = new TreeMap<Node, Potential>(marginals);
+        Misc.saveGraphOnDisk("graph.htm", bn);
         System.out.println("marginals = " + marginals);
-        System.out.println("marginals.size() = " + marginals.size());
-
-        System.out.println("estimatedTime = " + estimatedTime / 1000.0 + " (s)");
-        Misc.writeBntScript("bnt.m", bn, nodes, NO_STATES, marginals);
-
+        Misc.writeBntScript("bnt.m", bn, nodes, 2, marginals);
     }
 }

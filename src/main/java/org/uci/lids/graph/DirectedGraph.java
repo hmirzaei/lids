@@ -41,7 +41,7 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
 
         for (E parent : vertices.keySet()) {
             for (E child : vertices.get(parent).getChildren()) {
-                retVal.add(new Edge(vertices.get(parent).content, vertices.get(child).content));
+                retVal.add(new Edge<E>(vertices.get(parent).content, vertices.get(child).content));
             }
         }
         return retVal;
@@ -58,7 +58,7 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
         this.vertices.remove(node);
     }
 
-    public UndirectedGraph getUndirectedCopy() {
+    public UndirectedGraph<E> getUndirectedCopy() {
         UndirectedGraph<E> ug = new UndirectedGraph<E>();
 
         for (E e : this.vertices.keySet()) {
@@ -111,7 +111,7 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
     public Set<E> getFamily(E e) {
         Set<E> family = new LinkedHashSet<E>(getParents(e));
         family.add(e);
-        return Collections.unmodifiableSet(family);
+        return family;
     }
 
     public UndirectedGraph<E> getMoralizedUndirectedCopy() {
