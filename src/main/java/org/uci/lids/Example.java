@@ -54,6 +54,6 @@ public class Example {
         marginals = new TreeMap<Node, Potential>(marginals);
         Misc.saveGraphOnDisk("graph.htm", bn);
         System.out.println("marginals = " + marginals);
-        Misc.writeBntScript("bnt.m", bn, nodes, 2, marginals);
+        Misc.writeBntScript("bnt.m", bn, nodes,  marginals);
     }
 }
