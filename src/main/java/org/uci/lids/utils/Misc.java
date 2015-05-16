@@ -65,7 +65,7 @@ public class Misc {
         writer.close();
     }
 
-    public static void writeBntScript(String filename, DirectedGraph<Node> bn, List<Node> nodes, int noStates, Map<Node, Potential> marginals) {
+    public static void writeBntScript(String filename, DirectedGraph<Node> bn, List<Node> nodes, Map<Node, Potential> marginals) {
         int N = nodes.size();
         PrintWriter writer = null;
         try {
@@ -81,7 +81,7 @@ public class Misc {
 
         int[] noStatesArray = new int[N];
         for (int i = 0; i < N; i++) {
-            noStatesArray[i] = noStates;
+            noStatesArray[i] = nodes.get(i).getStates().length;
         }
 
         writer.println("dag=[");
@@ -107,20 +107,20 @@ public class Misc {
         writer.println("toc;");
 
         for (int i = 0; i < N; i++) {
-            writer.format("x%d = marg%d.T;", i, i + 1).println();
+            writer.format("bnt_%s = marg%d.T;", nodes.get(i).Label(), i + 1).println();
         }
         writer.println();
 
+        writer.println("error=0;");
         for (Map.Entry<Node, Potential> entry : marginals.entrySet()) {
-            writer.format("y%s=[", entry.getKey().Label()).println();
+            writer.format("lids_%s=[", entry.getKey().Label()).println();
             for (int i = 0; i < entry.getValue().getData().length; i++) {
                 writer.format("%.10f", entry.getValue().getData()[i]).println();
             }
-            writer.println("];");
+            writer.print("];");
+            writer.format("error = error+sum((lids_%s - bnt_%s).^2);", entry.getKey().Label(), entry.getKey().Label()).println();
         }
-        writer.format("sum=zeros(%d,1);for k=0:%d,sum=sum+eval(['x' num2str(k) '-y' num2str(k)]).^2;end;",
-                noStates, N - 1).println();
-        writer.format("error = sqrt(sum)").println();
+        writer.format("error = sqrt(error)").println();
 
         writer.close();
     }
