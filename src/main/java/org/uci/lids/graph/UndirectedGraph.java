@@ -201,13 +201,22 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
             Iterator<E> nodeIter = temporalIter.next().iterator();
             E e = nodeIter.next();
             Set<JunctionTreeNode<E>> cliques = assignedCliques.get(e);
-            while (cliques.size()!=1) {
+            Set<JunctionTreeNode<E>> prevCliques = new HashSet<JunctionTreeNode<E>>(cliques);
+            while (cliques.size()>1) {
                 if (!nodeIter.hasNext())
-                    nodeIter = temporalIter.next().iterator();
+                    if (!temporalIter.hasNext())
+                        break;
+                    else
+                        nodeIter = temporalIter.next().iterator();
                 e = nodeIter.next();
+                prevCliques = new HashSet<JunctionTreeNode<E>>(cliques);
                 cliques.retainAll(assignedCliques.get(e));
             }
-            jtreeAndRoot.rootClique = (CliqueNode<E>) cliques.iterator().next();
+            if (!cliques.isEmpty())
+                jtreeAndRoot.rootClique = (CliqueNode<E>) cliques.iterator().next();
+            else
+                jtreeAndRoot.rootClique = (CliqueNode<E>) prevCliques.iterator().next();
+
         }
 
         return jtreeAndRoot;

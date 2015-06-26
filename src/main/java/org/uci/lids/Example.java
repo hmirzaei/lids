@@ -4,86 +4,77 @@ import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.utils.Misc;
 
 
+
 import java.util.*;
 
 
 public class Example {
 
-
-
     public static void main(String[] args) {
+        List<Node> nodes = new ArrayList<Node>();
+        final int N = 10;
+        final int NO_STATES = 3;
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
 
-        Node A = new Node(Node.VariableType.Categorical, Node.Category.Chance,"A");
-        Node B = new Node(Node.VariableType.Categorical, Node.Category.Chance,"B");
-        Node C = new Node(Node.VariableType.Categorical, Node.Category.Chance,"C");
-        Node D = new Node(Node.VariableType.Categorical, Node.Category.Chance,"D");
-        Node E = new Node(Node.VariableType.Categorical, Node.Category.Chance,"E");
-        Node F = new Node(Node.VariableType.Categorical, Node.Category.Chance,"F");
-        Node G = new Node(Node.VariableType.Categorical, Node.Category.Chance,"G");
-        Node H = new Node(Node.VariableType.Categorical, Node.Category.Chance,"H");
-        Node I = new Node(Node.VariableType.Categorical, Node.Category.Chance,"I");
-        Node J = new Node(Node.VariableType.Categorical, Node.Category.Chance,"J");
-        Node K = new Node(Node.VariableType.Categorical, Node.Category.Chance,"K");
-        Node L = new Node(Node.VariableType.Categorical, Node.Category.Chance,"L");
-        Node D1 = new Node(Node.VariableType.Categorical, Node.Category.Decision,"D1");
-        Node D2 = new Node(Node.VariableType.Categorical, Node.Category.Decision,"D2");
-        Node D3 = new Node(Node.VariableType.Categorical, Node.Category.Decision,"D3");
-        Node D4 = new Node(Node.VariableType.Categorical, Node.Category.Decision,"D4");
-        Node V1 = new Node(Node.VariableType.Categorical, Node.Category.Utility,"V1");
-        Node V2 = new Node(Node.VariableType.Categorical, Node.Category.Utility,"V2");
-        Node V3 = new Node(Node.VariableType.Categorical, Node.Category.Utility,"V3");
-        Node V4 = new Node(Node.VariableType.Categorical, Node.Category.Utility,"V4");
-        bn.addNode(A);
-        bn.addNode(B);
-        bn.addNode(C);
-        bn.addNode(D);
-        bn.addNode(E);
-        bn.addNode(F);
-        bn.addNode(G);
-        bn.addNode(H);
-        bn.addNode(I);
-        bn.addNode(J);
-        bn.addNode(K);
-        bn.addNode(L);
-        bn.addNode(D1);
-        bn.addNode(D2);
-        bn.addNode(D3);
-        bn.addNode(D4);
-        bn.addNode(V1);
-        bn.addNode(V2);
-        bn.addNode(V3);
-        bn.addNode(V4);
-        bn.addLink(B,D1);
-        bn.addLink(D1,V1);
-        bn.addLink(A,C);
-        bn.addLink(B,C);
-        bn.addLink(B,D);
-        bn.addLink(D1,D);
-        bn.addLink(C,E);
-        bn.addLink(D,E);
-        bn.addLink(D,F);
-        bn.addLink(E,G);
-        bn.addLink(E,D2);
-        bn.addLink(F,D2);
-        bn.addLink(G,I);
-        bn.addLink(D2,I);
-        bn.addLink(F,H);
-        bn.addLink(D4,L);
-        bn.addLink(I,L);
-        bn.addLink(H,J);
-        bn.addLink(H,K);
-        bn.addLink(D3,K);
-        bn.addLink(D3,V4);
-        bn.addLink(L,V2);
-        bn.addLink(J,V3);
-        bn.addLink(K,V3);
-        bn.addLink(D2,D3);
-        bn.addLink(D3,D4);
-        bn.addLink(G,D4);
+        Random r = new Random(10);
+        for (int i = 0; i < N; i++) {
+            double randDouble = r.nextDouble();
+            Node node;
+            if (randDouble <2d/3)
+                node = new Node(Node.VariableType.Categorical, Node.Category.Chance, Integer.toString(i));
+            else if (randDouble<5d/6)
+                node = new Node(Node.VariableType.Categorical, Node.Category.Decision, Integer.toString(i));
+            else
+                node = new Node(Node.VariableType.Categorical, Node.Category.Utility, Integer.toString(i));
 
+            String[] sa = new String[NO_STATES];
+            for (int j = 0; j < NO_STATES; j++) {
+                sa[j] = Integer.toString(j);
+            }
+            node.setStates(sa);
+            nodes.add(node);
+            bn.addNode(node);
+        }
+
+
+        for (int i = 0; i < N; i++) {
+            for (int j = i + 1; j < N; j++) {
+                if (nodes.get(i).getCategory() != Node.Category.Utility)
+                bn.addLink(nodes.get(i), nodes.get(j));
+            }
+        }
+
+
+        for (int k = 0; k < 1.4 * (N * N); k++) {
+            int i = r.nextInt(N);
+            int j = r.nextInt(N);
+            bn.removeLink(nodes.get(i), nodes.get(j));
+        }
+        bn.addLink(nodes.get(4), nodes.get(7));
+
+
+        for (int i = 0; i < N; i++) {
+            Set<Node> parents = bn.getParents(nodes.get(i));
+            int size = (int) Math.round(Math.pow(NO_STATES, parents.size() + 1));
+            double[] potential = new double[size];
+            for (int j = 0; j < size; j++) {
+                potential[j] = r.nextDouble();
+            }
+
+            for (int k = 0; k < size / NO_STATES; k++) {
+                double sum = 0;
+                for (int j = k; j < size; j += size / NO_STATES) {
+                    sum += potential[j];
+                }
+                for (int j = k; j < size; j += size / NO_STATES) {
+                    potential[j] /= sum;
+                }
+            }
+            nodes.get(i).setPotential(potential);
+        }
+
+        Misc.saveGraphOnDisk("graph.html", bn);
         LQGInfluenceDiagram lid = new LQGInfluenceDiagram(bn);
         lid.getOptimalPolicy();
-        Misc.saveGraphOnDisk("graph.html", bn);
     }
 }
