@@ -12,6 +12,11 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         vertices = new LinkedHashMap<E, UndirectedVertex<E>>();
     }
 
+    public class JunctionTreeAndRoot {
+        public UndirectedGraph<JunctionTreeNode<E>> junctionTree =null;
+        public CliqueNode<E> rootClique = null;
+    }
+
     public Set<E> getAdjacents(E e) {
         return Collections.unmodifiableSet(vertices.get(e).getAdjacents());
     }
@@ -46,39 +51,61 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         this.vertices.remove(node);
     }
 
-    public void triangulate() {
 
+    public void triangulate(List<Set<E>> temporalOrder) {
         try {
             UndirectedGraph<E> tmpGraph = this.clone();
-            MinHeap<Integer, UndirectedVertex<E>> degreeHeap = new MinHeap<Integer, UndirectedVertex<E>>();
-
-            for (UndirectedVertex<E> vertex : tmpGraph.vertices.values()) {
-                degreeHeap.put(vertex.getDegree(), vertex);
+            for (int i = temporalOrder.size()-1; i >= 0; i--) {
+                triangulateSubGraph(temporalOrder.get(i), tmpGraph);
             }
-
-            while (degreeHeap.size() > 0) {
-                UndirectedVertex<E> minDegreeVertex = degreeHeap.remove().getValue();
-
-                for (E e1 : minDegreeVertex.getAdjacents()) {
-                    for (E e2 : minDegreeVertex.getAdjacents()) {
-                        if (!e1.equals(e2)) {
-                            this.addLink(e1, e2);
-                            tmpGraph.addLink(e1, e2);
-                        }
-                    }
-                    degreeHeap.remove(tmpGraph.vertices.get(e1));
-                    degreeHeap.put(tmpGraph.vertices.get(e1).getDegree() - 1, tmpGraph.vertices.get(e1));
-                }
-
-                tmpGraph.removeNode(minDegreeVertex.getContent());
-            }
-
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
         }
     }
 
+    public void triangulate() {
+        try {
+            UndirectedGraph<E> tmpGraph = this.clone();
+            triangulateSubGraph(this.getNodes(), tmpGraph);
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void triangulateSubGraph(Collection<E> nodes, UndirectedGraph<E> tmpGraph) {
+        MinHeap<Integer, UndirectedVertex<E>> degreeHeap = new MinHeap<Integer, UndirectedVertex<E>>();
+
+
+        for (E n : nodes) {
+            degreeHeap.put(tmpGraph.vertices.get(n).getDegree(), tmpGraph.vertices.get(n));
+        }
+
+        while (degreeHeap.size() > 0) {
+            UndirectedVertex<E> minDegreeVertex = degreeHeap.remove().getValue();
+            for (E e1 : minDegreeVertex.getAdjacents()) {
+                for (E e2 : minDegreeVertex.getAdjacents()) {
+                    if (!e1.equals(e2)) {
+                        this.addLink(e1, e2);
+                        tmpGraph.addLink(e1, e2);
+                    }
+                }
+                if (degreeHeap.contains(tmpGraph.vertices.get(e1))) {
+                    degreeHeap.remove(tmpGraph.vertices.get(e1));
+                    degreeHeap.put(tmpGraph.vertices.get(e1).getDegree() - 1, tmpGraph.vertices.get(e1));
+                }
+            }
+
+            tmpGraph.removeNode(minDegreeVertex.getContent());
+
+        }
+    }
+
     public UndirectedGraph<JunctionTreeNode<E>> getJunctionTree() {
+        return this.getJunctionTree(null).junctionTree;
+    }
+
+
+    public JunctionTreeAndRoot getJunctionTree(List<Set<E>> temporalOrder) {
 
         UndirectedGraph<JunctionTreeNode<E>> junctionTree = new UndirectedGraph<JunctionTreeNode<E>>();
         Set<E> visited = new HashSet<E>();
@@ -166,8 +193,24 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
             visited.add(maxCardinalityVertex.getContent());
         }
 
+        JunctionTreeAndRoot jtreeAndRoot = new JunctionTreeAndRoot();
+        jtreeAndRoot.junctionTree = junctionTree;
 
-        return junctionTree;
+        if (temporalOrder != null) {
+            Iterator<Set<E>> temporalIter = temporalOrder.iterator();
+            Iterator<E> nodeIter = temporalIter.next().iterator();
+            E e = nodeIter.next();
+            Set<JunctionTreeNode<E>> cliques = assignedCliques.get(e);
+            while (cliques.size()!=1) {
+                if (!nodeIter.hasNext())
+                    nodeIter = temporalIter.next().iterator();
+                e = nodeIter.next();
+                cliques.retainAll(assignedCliques.get(e));
+            }
+            jtreeAndRoot.rootClique = (CliqueNode<E>) cliques.iterator().next();
+        }
+
+        return jtreeAndRoot;
     }
 
     private void addTreeLinks(DirectedGraph<E> g, Set<E> v, E e, Boolean d) {
@@ -216,5 +259,6 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
     public String generateVisualizationHtml(String title) {
         return super.generateVisualizationHtml(false, title);
     }
+
 
 }

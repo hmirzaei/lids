@@ -61,12 +61,8 @@ public class Node implements Visualizable, Comparable<Node> {
         return variableType;
     }
 
-    public Category Category() {
-        return category;
-    }
 
-
-    public String Label() {
+    public String getLabel() {
         return label;
     }
 
@@ -96,6 +92,15 @@ public class Node implements Visualizable, Comparable<Node> {
             return this.label.compareTo(n.label);
         }
     }
+
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
 
     public enum Category {
         Chance, Decision, Utility

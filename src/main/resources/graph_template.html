@@ -3,8 +3,8 @@
 <head>
     <title>__page_title__</title>
 
-    <script type="text/javascript" src="http://visjs.org/dist/vis.js"></script>
-    <link href="http://visjs.org/dist/vis.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="https://rawgit.com/almende/vis/v4.2.0/dist/vis.js"></script>
+    <link href="https://rawgit.com/almende/vis/v4.2.0/dist/vis.css" rel="stylesheet" type="text/css"/>
     <style type="text/css">
         html, body, #fullheight {
         min-height: 100% !important;
@@ -16,119 +16,76 @@
         background-color: #cccccc;
         }
     </style>
+    <script type="text/javascript">
+    function draw() {
+      var options = {
+        "edges": {
+          "smooth": false
+        },
+        "physics": {
+          "barnesHut": {
+            "gravitationalConstant": -10200,
+            "springLength": 30
+          }
+        },
+        groups: {
+            Generic : {
+              shape: 'ellipse'
+            },
+            Clique : {
+              shape: 'ellipse'
+            },
+            Separator : {
+             shape: 'box',
+            },
+            DiscreteChance : {
+               shape: 'ellipse'
+            },
+            ContinuousChance : {
+               shape: 'ellipse',
+              borderWidth: 3
+            },
+            DiscreteDecision : {
+              shape: 'box',
+            },
+            ContinuousDecision : {
+              shape: 'box',
+              borderWidth: 3
+            },
+            DiscreteUtility : {
+              shape: 'diamond',
+              size: 20
+            },
+            ContinuousUtility : {
+              shape: 'diamond',
+              size: 20,
+              borderWidth: 3
+            }
+        },
+         configure: true
+      };
+
+        var nodes = [
+        __node_data__
+          ]; // to be filled out by the java application
+        var edges = [
+        __edge_data__
+          ]; // to be filled out by the java application
+
+          // create a network
+          var container = document.getElementById('mynetwork');
+          var data = {
+            nodes: nodes,
+            edges: edges
+          };
+          var network = new vis.Network(container, data, options);
+    }
+    </script>
 </head>
 
-<body>
+<body onload="draw();">
 
 <div id="mynetwork"></div>
-
-<script type="text/javascript">
-
-</script>
-<script type="text/javascript">
-  var options = {
-    smoothCurves: false,
-    __edge_style__
-    physics: {
-      barnesHut: {
-        enabled: true,
-         gravitationalConstant: -10000,
-         centralGravity: 0.9,
-         springLength: 45,
-         springConstant: 0.04,
-         damping: 2
-      },
-//      repulsion: {
-//        centralGravity: 0,
-//        springLength: 0,
-//        springConstant: 0,
-//        nodeDistance: 60,
-//        damping: 1
-//      },
-    },
-    groups: {
-        Generic : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'ellipse'
-        },
-        Clique : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'ellipse'
-        },
-        Separator : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'box',
-          radius: 0
-        },
-        DiscreteChance : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'ellipse'
-        },
-        ContinuousChance : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'ellipse',
-          borderWidth: 3
-        },
-        DiscreteDecision : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'box',
-          radius: 0
-        },
-        ContinuousDecision : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'box',
-          radius: 0,
-          borderWidth: 3
-        },
-        DiscreteUtility : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'triangle',
-          radius: 100
-        },
-        ContinuousUtility : {
-          allowedToMoveX: true,
-          allowedToMoveY:true,
-          shape: 'triangle',
-          radius: 0,
-          borderWidth: 3
-        }
-    }
-  };
-
-
-var nodes = [
-__node_data__
-  ]; // to be filled out by the java application
-var edges = [
-__edge_data__
-  ]; // to be filled out by the java application
-
-  // create a network
-  var container = document.getElementById('mynetwork');
-  var data = {
-    nodes: nodes,
-    edges: edges
-  };
-  var network = new vis.Network(container, data, options);
-
-
-
-
-
-
-
-
-
-
-</script>
 
 </body>
 </html>

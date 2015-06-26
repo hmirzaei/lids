@@ -107,18 +107,18 @@ public class Misc {
         writer.println("toc;");
 
         for (int i = 0; i < N; i++) {
-            writer.format("bnt_%s = marg%d.T;", nodes.get(i).Label(), i + 1).println();
+            writer.format("bnt_%s = marg%d.T;", nodes.get(i).getLabel(), i + 1).println();
         }
         writer.println();
 
         writer.println("error=0;");
         for (Map.Entry<Node, Potential> entry : marginals.entrySet()) {
-            writer.format("lids_%s=[", entry.getKey().Label()).println();
+            writer.format("lids_%s=[", entry.getKey().getLabel()).println();
             for (int i = 0; i < entry.getValue().getData().length; i++) {
                 writer.format("%.10f", entry.getValue().getData()[i]).println();
             }
             writer.print("];");
-            writer.format("error = error+sum((lids_%s - bnt_%s).^2);", entry.getKey().Label(), entry.getKey().Label()).println();
+            writer.format("error = error+sum((lids_%s - bnt_%s).^2);", entry.getKey().getLabel(), entry.getKey().getLabel()).println();
         }
         writer.format("error = sqrt(error)").println();
 

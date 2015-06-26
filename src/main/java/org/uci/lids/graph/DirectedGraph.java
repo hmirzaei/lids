@@ -58,6 +58,7 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
         this.vertices.remove(node);
     }
 
+
     public UndirectedGraph<E> getUndirectedCopy() {
         UndirectedGraph<E> ug = new UndirectedGraph<E>();
 
@@ -163,8 +164,22 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
                 result.add(new DirectedGraph<E>(vertices));
             }
         }
-        //System.out.println("result = " + result);
         return result;
     }
 
+    @Override
+    public DirectedGraph<E> clone() throws CloneNotSupportedException {
+        DirectedGraph<E> g = new DirectedGraph<E>();
+
+        for (E e : this.vertices.keySet()) {
+            g.addNode(e);
+        }
+
+        for (DirectedVertex<E> parent : this.vertices.values()) {
+            for (E child : parent.getChildren()) {
+                g.addLink(parent.getContent(), child);
+            }
+        }
+        return g;
+    }
 }

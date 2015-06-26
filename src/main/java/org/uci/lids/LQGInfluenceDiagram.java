@@ -1,6 +1,7 @@
 package org.uci.lids;
 
 import org.uci.lids.graph.*;
+import org.uci.lids.utils.Misc;
 import org.uci.lids.utils.Potential;
 
 import java.util.*;
@@ -10,7 +11,7 @@ import java.util.*;
  */
 public class LQGInfluenceDiagram {
 
-    private DirectedGraph<Node> bayesianNetwork = new DirectedGraph<Node>();
+    private DirectedGraph<Node> bayesianNetwork;
     private Map<Node, Potential> nodePotentialMap;
 
 
@@ -32,13 +33,71 @@ public class LQGInfluenceDiagram {
     }
 
 
+    public void getOptimalPolicy() {
+        DirectedGraph<Node> bnCopy = null;
+        try {
+            bnCopy = bayesianNetwork.clone();
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+        }
+
+        List<Set<Node>> temporalOrder = new ArrayList<Set<Node>>();
+        LinkedList<Node> topologicalOrderedNodes = bnCopy.getTopologicalOrderedNodes();
+
+        Set<Node> lastNodes = new HashSet<Node>();
+        temporalOrder.add(new HashSet<Node>());
+
+        for (Node n : topologicalOrderedNodes) {
+            if (n.getCategory() == Node.Category.Chance)
+                lastNodes.add(n);
+        }
+
+
+        for (Node n : topologicalOrderedNodes) {
+            if (n.getCategory() == Node.Category.Decision) {
+                boolean hasParent = false;
+                for (Node parent : bnCopy.getParents(n)) {
+                    if (parent.getCategory() == Node.Category.Chance) {
+                        lastNodes.remove(parent);
+                        temporalOrder.get(temporalOrder.size() - 1).add(parent);
+                        hasParent = true;
+                    }
+                }
+                if (hasParent) temporalOrder.add(new HashSet<Node>());
+                temporalOrder.get(temporalOrder.size() - 1).add(n);
+                temporalOrder.add(new HashSet<Node>());
+            }
+        }
+        temporalOrder.set(temporalOrder.size() - 1, lastNodes);
+        System.out.println("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
+
+        List<Edge<Node>> edges = bnCopy.getEdgeList();
+        for (Edge<Node> e : edges)
+            if (e.getNode2().getCategory() == Node.Category.Decision)
+                bnCopy.removeLink(e.getNode1(), e.getNode2());
+
+        UndirectedGraph<Node> moralized = bnCopy.getMoralizedUndirectedCopy();
+        for (Node n : bnCopy.getNodes())
+            if (n.getCategory() == Node.Category.Utility)
+                moralized.removeNode(n);
+
+        Misc.saveGraphOnDisk("moralized.html", moralized);
+
+        moralized.triangulate(temporalOrder);
+        Misc.saveGraphOnDisk("triangulated.html", moralized);
+        UndirectedGraph<Node>.JunctionTreeAndRoot jtAndRoot = moralized.getJunctionTree(temporalOrder);
+        UndirectedGraph<JunctionTreeNode<Node>> jt = jtAndRoot.junctionTree;
+        CliqueNode<Node> root = jtAndRoot.rootClique;
+        Misc.saveGraphOnDisk("jtree.html", jt);
+        System.out.println("root = " + root);
+    }
+
     public Potential getNodePotential(Node node) {
         return nodePotentialMap.get(node);
     }
 
     public Map<Node, Potential> getMarginals() {
-        Map<Node, Integer> empty = new HashMap<Node, Integer>();
-        return getMarginals(empty);
+        return getMarginals(null);
     }
 
     public Map<Node, Potential> getMarginals(Map<Node, Integer> evidences) {
@@ -57,7 +116,7 @@ public class LQGInfluenceDiagram {
                 result.put(node, entry.getValue().project(s));
             }
         }
-        if (!evidences.isEmpty()) {
+        if (evidences != null) {
             for (Map.Entry<Node, Potential> entry : result.entrySet()) {
                 entry.getValue().normalize(entry.getKey());
             }
@@ -175,3 +234,4 @@ public class LQGInfluenceDiagram {
     }
 
 }
+

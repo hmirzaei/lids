@@ -53,13 +53,12 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
 
         StringBuilder edgeString = new StringBuilder();
         for (Edge<E> e : getEdgeList()) {
-            edgeString.append(String.format("{from: %d, to: %s},\n", e.getNode1().hashCode(), e.getNode2().hashCode()));
+            if (directed)
+                edgeString.append(String.format("{from: %d, to: %s, arrows:'to'},\n", e.getNode1().hashCode(), e.getNode2().hashCode()));
+            else
+                edgeString.append(String.format("{from: %d, to: %s},\n", e.getNode1().hashCode(), e.getNode2().hashCode()));
         }
 
-        if (directed)
-            htmlString = htmlString.replace("__edge_style__", "edges: {style: 'arrow',},");
-        else
-            htmlString = htmlString.replace("__edge_style__", "");
 
 
         htmlString = htmlString.replace("__node_data__", nodeString.toString());
