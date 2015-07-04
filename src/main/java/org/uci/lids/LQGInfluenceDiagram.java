@@ -88,42 +88,10 @@ public class LQGInfluenceDiagram {
         moralized.triangulate(temporalOrder);
         Misc.saveGraphOnDisk("triangulated.html", moralized);
         UndirectedGraph<Node>.JunctionTreeAndRoot jtAndRoot = moralized.getJunctionTree(temporalOrder);
-        UndirectedGraph<JunctionTreeNode<Node>> jt = jtAndRoot.junctionTree;
+        DirectedGraph<JunctionTreeNode<Node>> jt = jtAndRoot.junctionTree;
         CliqueNode<Node> root = jtAndRoot.rootClique;
         Misc.saveGraphOnDisk("jtree.html", jt);
         System.out.println("root = " + root);
-        DirectedGraph<JunctionTreeNode<Node>> rootedJt = jt.getTreeSourceFrom(root);
-        Misc.saveGraphOnDisk("rjtree.html", rootedJt);
-        assertStrength(rootedJt, temporalOrder, root);
-
-    }
-
-    private void assertStrength(DirectedGraph<JunctionTreeNode<Node>> rootedJunctionTree, List<Set<Node>> temporalOrder, JunctionTreeNode<Node> root) {
-        for (JunctionTreeNode<Node> child: rootedJunctionTree.getChildren(root)) {
-            JunctionTreeNode<Node> grandChild = rootedJunctionTree.getChildren(child).iterator().next();
-            System.out.println("grandChild = " + grandChild);
-            HashSet<Node> set1 = new HashSet<Node>(grandChild.getMembers());
-            set1.removeAll(child.getMembers());
-            int seperatorMinimumOrder = Integer.MAX_VALUE;
-            int i = 0;
-            while(seperatorMinimumOrder==Integer.MAX_VALUE && i<temporalOrder.size()) {
-                for (Node node: set1)
-                    if (temporalOrder.get(i).contains(node)) {
-                        seperatorMinimumOrder = i;
-                        break;
-                    }
-                i++;
-            }
-            for (int j = 0; j < temporalOrder.size(); j++) {
-                for (Node node: child.getMembers())
-                    if (temporalOrder.get(j).contains(node)) {
-                        System.out.println(Arrays.toString(new int[]{j, seperatorMinimumOrder}));
-                        assert j <= seperatorMinimumOrder;
-                    }
-
-            }
-            assertStrength(rootedJunctionTree, temporalOrder, grandChild);
-        }
     }
 
     public Potential getNodePotential(Node node) {

@@ -8,13 +8,10 @@ import java.util.*;
  * Created by hamid on 3/17/15.
  */
 public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> implements Cloneable {
+    private List<E> eliminationOrder;
+
     {
         vertices = new LinkedHashMap<E, UndirectedVertex<E>>();
-    }
-
-    public class JunctionTreeAndRoot {
-        public UndirectedGraph<JunctionTreeNode<E>> junctionTree =null;
-        public CliqueNode<E> rootClique = null;
     }
 
     public Set<E> getAdjacents(E e) {
@@ -51,11 +48,16 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         this.vertices.remove(node);
     }
 
+    @Override
+    public void replaceNode(E e1, E e2) {
+        // to do: implement
+    }
 
     public void triangulate(List<Set<E>> temporalOrder) {
         try {
+            eliminationOrder = new ArrayList<E>();
             UndirectedGraph<E> tmpGraph = this.clone();
-            for (int i = temporalOrder.size()-1; i >= 0; i--) {
+            for (int i = temporalOrder.size() - 1; i >= 0; i--) {
                 triangulateSubGraph(temporalOrder.get(i), tmpGraph);
             }
         } catch (CloneNotSupportedException e) {
@@ -96,18 +98,17 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
             }
 
             tmpGraph.removeNode(minDegreeVertex.getContent());
-
+            eliminationOrder.add(minDegreeVertex.getContent());
         }
     }
 
     public UndirectedGraph<JunctionTreeNode<E>> getJunctionTree() {
-        return this.getJunctionTree(null).junctionTree;
+        return this.getJunctionTree(null).junctionTree.getUndirectedCopy();
     }
-
 
     public JunctionTreeAndRoot getJunctionTree(List<Set<E>> temporalOrder) {
 
-        UndirectedGraph<JunctionTreeNode<E>> junctionTree = new UndirectedGraph<JunctionTreeNode<E>>();
+        DirectedGraph<JunctionTreeNode<E>> junctionTree = new DirectedGraph<JunctionTreeNode<E>>();
         Set<E> visited = new HashSet<E>();
         Set<E> bLambda = null;
         Set<E> prev_b_lambda = new HashSet<E>();
@@ -197,28 +198,57 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         jtreeAndRoot.junctionTree = junctionTree;
 
         if (temporalOrder != null) {
-            Iterator<Set<E>> temporalIter = temporalOrder.iterator();
-            Iterator<E> nodeIter = temporalIter.next().iterator();
-            E e = nodeIter.next();
-            Set<JunctionTreeNode<E>> cliques = assignedCliques.get(e);
-            Set<JunctionTreeNode<E>> prevCliques = new HashSet<JunctionTreeNode<E>>(cliques);
-            while (cliques.size()>1) {
-                if (!nodeIter.hasNext())
-                    if (!temporalIter.hasNext())
-                        break;
-                    else
-                        nodeIter = temporalIter.next().iterator();
-                e = nodeIter.next();
-                prevCliques = new HashSet<JunctionTreeNode<E>>(cliques);
-                cliques.retainAll(assignedCliques.get(e));
+            DirectedGraph<JunctionTreeNode<E>> jtree2 = new DirectedGraph<JunctionTreeNode<E>>();
+            List<Edge<JunctionTreeNode<E>>> jtreeEdges = new ArrayList<Edge<JunctionTreeNode<E>>>();
+            List<CliqueNode<E>> cliqueReplaceList = new ArrayList<CliqueNode<E>>();
+            for (E e : eliminationOrder) {
+                if (!assignedCliques.get(e).isEmpty()) {
+                    CliqueNode<E> clique = (CliqueNode<E>) assignedCliques.get(e).iterator().next();
+                    jtree2.addNode(clique);
+                    Set<E> seperatorMembers = new HashSet<E>();
+                    Set<JunctionTreeNode<E>> candidates = new HashSet<JunctionTreeNode<E>>();
+                    boolean isCandidatesInitialized = false;
+                    for (E m : clique.getMembers()) {
+                        if (assignedCliques.get(m).contains(clique))
+                            assignedCliques.get(m).remove(clique);
+                        if (!assignedCliques.get(m).isEmpty()) {
+                            seperatorMembers.add(m);
+                            if (!isCandidatesInitialized) {
+                                isCandidatesInitialized = true;
+                                candidates.addAll(assignedCliques.get(m));
+                            } else {
+                                candidates.retainAll(assignedCliques.get(m));
+                            }
+                        }
+                    }
+                    if (!candidates.isEmpty()) {
+                        SeparatorNode<E> separatorNode = new SeparatorNode<E>(seperatorMembers);
+                        jtree2.addNode(separatorNode);
+                        jtree2.addLink(clique, separatorNode);
+                        jtreeEdges.add(new Edge<JunctionTreeNode<E>>(separatorNode, candidates.iterator().next()));
+                    } else {
+                        if (!seperatorMembers.isEmpty()) {
+                            jtree2.removeNode(clique);
+                            CliqueNode<E> newClique = new CliqueNode<E>(seperatorMembers);
+                            for (E e1 : seperatorMembers)
+                                assignedCliques.get(e1).add(newClique);
+                            cliqueReplaceList.add(clique);
+                            cliqueReplaceList.add(newClique);
+                        } else
+                            jtreeAndRoot.rootClique = clique;
+                    }
+                }
             }
-            if (!cliques.isEmpty())
-                jtreeAndRoot.rootClique = (CliqueNode<E>) cliques.iterator().next();
-            else
-                jtreeAndRoot.rootClique = (CliqueNode<E>) prevCliques.iterator().next();
+            for (Edge<JunctionTreeNode<E>> edge : jtreeEdges) {
+                jtree2.addLink(edge.getNode1(), edge.getNode2());
+            }
+            ListIterator<CliqueNode<E>> replaceListIter = cliqueReplaceList.listIterator(cliqueReplaceList.size());
+            while (replaceListIter.hasPrevious())
+                jtree2.replaceNode(replaceListIter.previous(), replaceListIter.previous());
+            jtreeAndRoot.junctionTree = jtree2;
 
+            assertStrength(jtree2, temporalOrder, jtreeAndRoot.rootClique);
         }
-
         return jtreeAndRoot;
     }
 
@@ -267,6 +297,38 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
 
     public String generateVisualizationHtml(String title) {
         return super.generateVisualizationHtml(false, title);
+    }
+
+    private void assertStrength(DirectedGraph<JunctionTreeNode<E>> rootedJunctionTree, List<Set<E>> temporalOrder, JunctionTreeNode<E> root) {
+        for (JunctionTreeNode<E> parent : rootedJunctionTree.getParents(root)) {
+            JunctionTreeNode<E> grandParent = rootedJunctionTree.getParents(parent).iterator().next();
+
+            HashSet<E> set1 = new HashSet<E>(grandParent.getMembers());
+            set1.removeAll(parent.getMembers());
+            int separatorMinimumOrder = Integer.MAX_VALUE;
+            int i = 0;
+            while (separatorMinimumOrder == Integer.MAX_VALUE && i < temporalOrder.size()) {
+                for (E node : set1)
+                    if (temporalOrder.get(i).contains(node)) {
+                        separatorMinimumOrder = i;
+                        break;
+                    }
+                i++;
+            }
+            for (int j = 0; j < temporalOrder.size(); j++) {
+                for (E node : parent.getMembers())
+                    if (temporalOrder.get(j).contains(node)) {
+                        assert j <= separatorMinimumOrder;
+                    }
+
+            }
+            assertStrength(rootedJunctionTree, temporalOrder, grandParent);
+        }
+    }
+
+    public class JunctionTreeAndRoot {
+        public DirectedGraph<JunctionTreeNode<E>> junctionTree = null;
+        public CliqueNode<E> rootClique = null;
     }
 
 

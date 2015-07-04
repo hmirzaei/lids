@@ -16,6 +16,9 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
 
     public abstract void removeNode(E e);
 
+    public abstract void replaceNode(E e1, E e2);
+
+
     public abstract List<Edge<E>> getEdgeList();
 
     public abstract String generateVisualizationHtml(String title);
@@ -72,4 +75,6 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
     public String toString() {
         return Arrays.toString(vertices.values().toArray());
     }
+
+
 }

@@ -58,6 +58,17 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
         this.vertices.remove(node);
     }
 
+    @Override
+    public void replaceNode(E e1, E e2) {
+        this.addNode(e2);
+        for (E child : vertices.get(e1).getChildren())
+            vertices.get(e2).addLinkTo(vertices.get(child));
+
+        for (E parent : vertices.get(e1).getParents())
+            vertices.get(parent).addLinkTo(vertices.get(e2));
+        this.removeNode(e1);
+    }
+
 
     public UndirectedGraph<E> getUndirectedCopy() {
         UndirectedGraph<E> ug = new UndirectedGraph<E>();
