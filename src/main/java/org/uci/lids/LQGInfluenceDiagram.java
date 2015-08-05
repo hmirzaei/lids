@@ -34,15 +34,47 @@ public class LQGInfluenceDiagram {
 
 
     public void getOptimalPolicy() {
-        DirectedGraph<Node> bnCopy = null;
-        try {
-            bnCopy = bayesianNetwork.clone();
-        } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
+        List<DirectedGraph<Node>> connectedComponents = this.bayesianNetwork.getConnectedComponents();
+        for (DirectedGraph<Node> graph : connectedComponents) {
+            getConnectedComponent‌OptimalPolicy(graph);
         }
+    }
 
+    public void getConnectedComponent‌OptimalPolicy(DirectedGraph<Node> bayesianNetwork) {
+
+        List<Set<Node>> temporalOrder = getTemporalOrder(bayesianNetwork);
+        System.out.println("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
+        UndirectedGraph<Node> moralized = getMoralizedInfluenceDiagram(bayesianNetwork);
+        Misc.saveGraphOnDisk("moralized.html", moralized);
+
+        List<UndirectedGraph<Node>> connectedComponents = moralized.getConnectedComponents();
+
+        for (UndirectedGraph<Node> graph : connectedComponents) {
+            graph.triangulate(temporalOrder);
+            Misc.saveGraphOnDisk("triangulated.html", graph);
+            UndirectedGraph<Node>.JunctionTreeAndRoot jtAndRoot = graph.getJunctionTree(temporalOrder);
+            System.out.println("jtAndRoot.rootClique = " + jtAndRoot.rootClique);
+            DirectedGraph<JunctionTreeNode<Node>> jt = jtAndRoot.junctionTree;
+            Misc.saveGraphOnDisk("jtree.html", jt);
+        }
+    }
+
+    private UndirectedGraph<Node> getMoralizedInfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
+        List<Edge<Node>> edges = bayesianNetwork.getEdgeList();
+        for (Edge<Node> e : edges)
+            if (e.getNode2().getCategory() == Node.Category.Decision)
+                bayesianNetwork.removeLink(e.getNode1(), e.getNode2());
+
+        UndirectedGraph<Node> moralized = bayesianNetwork.getMoralizedUndirectedCopy();
+        for (Node n : bayesianNetwork.getNodes())
+            if (n.getCategory() == Node.Category.Utility)
+                moralized.removeNode(n);
+        return moralized;
+    }
+
+    private List<Set<Node>> getTemporalOrder(DirectedGraph<Node> bayesianNetwork) {
         List<Set<Node>> temporalOrder = new ArrayList<Set<Node>>();
-        LinkedList<Node> topologicalOrderedNodes = bnCopy.getTopologicalOrderedNodes();
+        LinkedList<Node> topologicalOrderedNodes = bayesianNetwork.getTopologicalOrderedNodes();
 
         Set<Node> lastNodes = new HashSet<Node>();
         temporalOrder.add(new HashSet<Node>());
@@ -55,43 +87,23 @@ public class LQGInfluenceDiagram {
 
         for (Node n : topologicalOrderedNodes) {
             if (n.getCategory() == Node.Category.Decision) {
-                boolean hasParent = false;
-                for (Node parent : bnCopy.getParents(n)) {
+                boolean hasChanceParent = false;
+                for (Node parent : bayesianNetwork.getParents(n)) {
                     if (parent.getCategory() == Node.Category.Chance) {
                         if (lastNodes.contains(parent)) {
                             lastNodes.remove(parent);
                             temporalOrder.get(temporalOrder.size() - 1).add(parent);
-                            hasParent = true;
+                            hasChanceParent = true;
                         }
                     }
                 }
-                if (hasParent) temporalOrder.add(new HashSet<Node>());
+                if (hasChanceParent) temporalOrder.add(new HashSet<Node>());
                 temporalOrder.get(temporalOrder.size() - 1).add(n);
                 temporalOrder.add(new HashSet<Node>());
             }
         }
         temporalOrder.set(temporalOrder.size() - 1, lastNodes);
-        System.out.println("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
-
-        List<Edge<Node>> edges = bnCopy.getEdgeList();
-        for (Edge<Node> e : edges)
-            if (e.getNode2().getCategory() == Node.Category.Decision)
-                bnCopy.removeLink(e.getNode1(), e.getNode2());
-
-        UndirectedGraph<Node> moralized = bnCopy.getMoralizedUndirectedCopy();
-        for (Node n : bnCopy.getNodes())
-            if (n.getCategory() == Node.Category.Utility)
-                moralized.removeNode(n);
-
-        Misc.saveGraphOnDisk("moralized.html", moralized);
-
-        moralized.triangulate(temporalOrder);
-        Misc.saveGraphOnDisk("triangulated.html", moralized);
-        UndirectedGraph<Node>.JunctionTreeAndRoot jtAndRoot = moralized.getJunctionTree(temporalOrder);
-        DirectedGraph<JunctionTreeNode<Node>> jt = jtAndRoot.junctionTree;
-        CliqueNode<Node> root = jtAndRoot.rootClique;
-        Misc.saveGraphOnDisk("jtree.html", jt);
-        System.out.println("root = " + root);
+        return temporalOrder;
     }
 
     public Potential getNodePotential(Node node) {

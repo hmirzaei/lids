@@ -66,6 +66,10 @@ public class Node implements Visualizable, Comparable<Node> {
         return label;
     }
 
+    public void setLabel(String label) {
+        this.label = label;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof Node) {
@@ -95,10 +99,6 @@ public class Node implements Visualizable, Comparable<Node> {
 
     public Category getCategory() {
         return category;
-    }
-
-    public void setLabel(String label) {
-        this.label = label;
     }
 
 

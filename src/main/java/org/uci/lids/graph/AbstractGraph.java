@@ -24,6 +24,12 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
     public abstract String generateVisualizationHtml(String title);
 
 
+    public void removeSubGraph(AbstractGraph<E, Vertex> subGraph) {
+        for (E e : subGraph.getNodes()) {
+            this.removeNode(e);
+        }
+    }
+
     public void addLink(E node1, E node2) {
         this.vertices.get(node1).addLinkTo(vertices.get(node2));
     }
@@ -61,7 +67,6 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
             else
                 edgeString.append(String.format("{from: %d, to: %s},\n", e.getNode1().hashCode(), e.getNode2().hashCode()));
         }
-
 
 
         htmlString = htmlString.replace("__node_data__", nodeString.toString());
