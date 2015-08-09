@@ -1,5 +1,7 @@
 package org.uci.lids;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.utils.Misc;
 
@@ -7,6 +9,8 @@ import java.util.*;
 
 
 public class Example {
+
+    final static Logger logger = Logger.getLogger(Example.class);
 
     public static void main(String[] args) {
         List<Node> nodes = new ArrayList<Node>();
@@ -113,7 +117,8 @@ public class Example {
             nodes.get(i).setPotential(potential);
         }
 
-        Misc.saveGraphOnDisk("graph.html", bn);
+        if (logger.getEffectiveLevel() == Level.DEBUG)
+            Misc.saveGraphOnDisk("graph.html", bn);
         LQGInfluenceDiagram lid = new LQGInfluenceDiagram(bn);
         lid.getOptimalPolicy();
     }

@@ -1,5 +1,6 @@
 package org.uci.lids.graph;
 
+import org.apache.log4j.Logger;
 import org.uci.lids.utils.MinHeap;
 import org.uci.lids.utils.Misc;
 
@@ -9,6 +10,8 @@ import java.util.*;
  * Created by hamid on 3/17/15.
  */
 public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> implements Cloneable {
+    final static Logger logger = Logger.getLogger(UndirectedGraph.class);
+
     private List<E> eliminationOrder;
 
     {
@@ -75,7 +78,7 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
                 triangulateSubGraph(temporalOrder.get(i), tmpGraph);
             }
         } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
+            logger.error(e);
         }
     }
 
@@ -213,7 +216,7 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         JunctionTreeAndRoot jtreeAndRoot = new JunctionTreeAndRoot();
         jtreeAndRoot.junctionTree = junctionTree;
 
-        System.out.println("eliminationOrder = " + eliminationOrder);
+        logger.debug("eliminationOrder = " + eliminationOrder);
 
         Map<E, Integer> nodeValues = new HashMap<E, Integer>();
         int value = 0;
@@ -259,7 +262,7 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
             }
 
             cliqueNumbers = Misc.sortByValue(cliqueNumbers);
-            System.out.println("cliqueNumbers = " + cliqueNumbers);
+            logger.debug("cliqueNumbers = " + cliqueNumbers);
 
             cliqueUnion = new HashSet<E>();
             assignedCliques = new HashMap<E, Set<JunctionTreeNode<E>>>();

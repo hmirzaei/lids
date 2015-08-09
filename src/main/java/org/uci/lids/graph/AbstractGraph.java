@@ -43,7 +43,7 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
 
         String htmlString = "";
         try {
-            htmlString = new Scanner(new File("src/main/resources/graph_template.html")).useDelimiter("\\Z").next();
+            htmlString = new Scanner(new File("classes/graph_template.html")).useDelimiter("\\Z").next();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }

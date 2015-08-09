@@ -1,5 +1,7 @@
 package org.uci.lids;
 
+import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.uci.lids.graph.*;
 import org.uci.lids.utils.Misc;
 import org.uci.lids.utils.Potential;
@@ -11,9 +13,9 @@ import java.util.*;
  */
 public class LQGInfluenceDiagram {
 
+    final static Logger logger = Logger.getLogger(LQGInfluenceDiagram.class);
     private DirectedGraph<Node> bayesianNetwork;
     private Map<Node, Potential> nodePotentialMap;
-
 
     public LQGInfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
         this.bayesianNetwork = bayesianNetwork;
@@ -43,19 +45,22 @@ public class LQGInfluenceDiagram {
     public void getConnectedComponent‌OptimalPolicy(DirectedGraph<Node> bayesianNetwork) {
 
         List<Set<Node>> temporalOrder = getTemporalOrder(bayesianNetwork);
-        System.out.println("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
+        logger.debug("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
         UndirectedGraph<Node> moralized = getMoralizedInfluenceDiagram(bayesianNetwork);
-        Misc.saveGraphOnDisk("moralized.html", moralized);
+        if (logger.getEffectiveLevel() == Level.DEBUG)
+            Misc.saveGraphOnDisk("moralized.html", moralized);
 
         List<UndirectedGraph<Node>> connectedComponents = moralized.getConnectedComponents();
 
         for (UndirectedGraph<Node> graph : connectedComponents) {
             graph.triangulate(temporalOrder);
-            Misc.saveGraphOnDisk("triangulated.html", graph);
+            if (logger.getEffectiveLevel() == Level.DEBUG)
+                Misc.saveGraphOnDisk("triangulated.html", graph);
             UndirectedGraph<Node>.JunctionTreeAndRoot jtAndRoot = graph.getJunctionTree(temporalOrder);
-            System.out.println("jtAndRoot.rootClique = " + jtAndRoot.rootClique);
+            logger.debug("RootClique = " + jtAndRoot.rootClique);
             DirectedGraph<JunctionTreeNode<Node>> jt = jtAndRoot.junctionTree;
-            Misc.saveGraphOnDisk("jtree.html", jt);
+            if (logger.getEffectiveLevel() == Level.DEBUG)
+                Misc.saveGraphOnDisk("jtree.html", jt);
         }
     }
 
