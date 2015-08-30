@@ -8,6 +8,25 @@ import java.util.*;
  * Created by hamid on 3/25/15.
  */
 public class Potential {
+
+    public class MaxProjectAnswer {
+        private Potential potential;
+        private Map<Node, Potential> maxState;
+
+        public MaxProjectAnswer(Potential potential, Map<Node, Potential> maxState) {
+            this.potential = potential;
+            this.maxState = maxState;
+        }
+
+        public Potential getPotential() {
+            return potential;
+        }
+
+        public Map<Node, Potential> getMaxState() {
+            return maxState;
+        }
+    }
+
     private LinkedHashSet<Node> variables;
     private double[] data;
 
@@ -69,6 +88,74 @@ public class Potential {
             for (int j : pBits)
                 pInd.add(ind.get(j));
             result.data[i] = this.data[this.getPotPosition(thisInd)] * p.data[p.getPotPosition(pInd)];
+        }
+
+        return result;
+    }
+
+    public Potential add(Potential p) {
+        LinkedHashSet<Node> variables = new LinkedHashSet<Node>(this.variables);
+        variables.addAll(p.variables);
+        Potential result = new Potential(variables);
+
+
+        ArrayList<Node> thisVars = new ArrayList<Node>(this.variables);
+        ArrayList<Node> pVars = new ArrayList<Node>(p.variables);
+        ArrayList<Node> resultVars = new ArrayList<Node>(variables);
+
+        int[] thisBits = new int[thisVars.size()];
+        int[] pBits = new int[pVars.size()];
+
+        for (int i = 0; i < thisVars.size(); i++) {
+            thisBits[i] = resultVars.indexOf(thisVars.get(i));
+        }
+        for (int i = 0; i < pVars.size(); i++) {
+            pBits[i] = resultVars.indexOf(pVars.get(i));
+        }
+
+        for (int i = 0; i < result.data.length; i++) {
+            List<Integer> ind = result.getIndex(i);
+            List<Integer> thisInd = new ArrayList<Integer>();
+            List<Integer> pInd = new ArrayList<Integer>();
+            for (int j : thisBits)
+                thisInd.add(ind.get(j));
+            for (int j : pBits)
+                pInd.add(ind.get(j));
+            result.data[i] = this.data[this.getPotPosition(thisInd)] + p.data[p.getPotPosition(pInd)];
+        }
+
+        return result;
+    }
+
+    public Potential divide(Potential p) {
+        LinkedHashSet<Node> variables = new LinkedHashSet<Node>(this.variables);
+        variables.addAll(p.variables);
+        Potential result = new Potential(variables);
+
+
+        ArrayList<Node> thisVars = new ArrayList<Node>(this.variables);
+        ArrayList<Node> pVars = new ArrayList<Node>(p.variables);
+        ArrayList<Node> resultVars = new ArrayList<Node>(variables);
+
+        int[] thisBits = new int[thisVars.size()];
+        int[] pBits = new int[pVars.size()];
+
+        for (int i = 0; i < thisVars.size(); i++) {
+            thisBits[i] = resultVars.indexOf(thisVars.get(i));
+        }
+        for (int i = 0; i < pVars.size(); i++) {
+            pBits[i] = resultVars.indexOf(pVars.get(i));
+        }
+
+        for (int i = 0; i < result.data.length; i++) {
+            List<Integer> ind = result.getIndex(i);
+            List<Integer> thisInd = new ArrayList<Integer>();
+            List<Integer> pInd = new ArrayList<Integer>();
+            for (int j : thisBits)
+                thisInd.add(ind.get(j));
+            for (int j : pBits)
+                pInd.add(ind.get(j));
+            result.data[i] = this.data[this.getPotPosition(thisInd)] / p.data[p.getPotPosition(pInd)];
         }
 
         return result;
@@ -139,6 +226,62 @@ public class Potential {
         }
         return result;
     }
+
+    public MaxProjectAnswer maxProject(Set<Node> projVariables) {
+        projVariables = new LinkedHashSet<Node>(projVariables);  // make a copy
+        projVariables.retainAll(this.variables);
+
+        LinkedHashSet<Node> eliminatedVariables = new LinkedHashSet<Node>(this.variables);  // make a copy
+        eliminatedVariables.removeAll(projVariables);
+
+        Potential maxPotential = new Potential((LinkedHashSet<Node>) projVariables);
+        HashMap<Node, Potential> maxStates = new HashMap<Node, Potential>();
+        for(Node n: eliminatedVariables) {
+            maxStates.put(n, new Potential((LinkedHashSet<Node>)projVariables));
+        }
+
+
+        ArrayList<Node> thisVars = new ArrayList<Node>(this.variables);
+        ArrayList<Node> projectionVariablesList = new ArrayList<Node>(projVariables);
+        ArrayList<Node> eliminatedVariablesList = new ArrayList<Node>(eliminatedVariables);
+
+        int[] projectionBits = new int[projectionVariablesList.size()];
+        int[] eliminatedBits = new int[eliminatedVariablesList.size()];
+
+        for (int i = 0; i < projectionVariablesList.size(); i++) {
+            projectionBits[i] = thisVars.indexOf(projectionVariablesList.get(i));
+        }
+        for (int i = 0; i < eliminatedVariablesList.size(); i++) {
+            eliminatedBits[i] = thisVars.indexOf(eliminatedVariablesList.get(i));
+        }
+
+        for (int i = 0; i < maxPotential.data.length; i++) {
+            maxPotential.data[i] = Double.MIN_VALUE;
+        }
+
+        for (int i = 0; i < this.getTotalSize(); i++) {
+            List<Integer> ind = this.getIndex(i);
+            List<Integer> projectionInd = new ArrayList<Integer>();
+            for (int j : projectionBits)
+                projectionInd.add(ind.get(j));
+            List<Integer> eliminatedInd = new ArrayList<Integer>();
+            for (int j : eliminatedBits)
+                eliminatedInd.add(ind.get(j));
+
+            if (this.data[this.getPotPosition(ind)] >maxPotential.data[maxPotential.getPotPosition(projectionInd)]) {
+                maxPotential.data[maxPotential.getPotPosition(projectionInd)] =this.data[this.getPotPosition(ind)];
+                int c = 0;
+                for(Node n: eliminatedVariables) {
+                    Potential pot = maxStates.get(n);
+                    pot.data[pot.getPotPosition(projectionInd)] = ind.get(eliminatedBits[c]);
+                    c++;
+                }
+            }
+        }
+
+        return new MaxProjectAnswer(maxPotential,maxStates);
+    }
+
 
     public List<Integer> getIndex(int potPositon) {
         List<Integer> index = new ArrayList<Integer>();

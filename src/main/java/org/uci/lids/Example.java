@@ -4,6 +4,7 @@ import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.utils.Misc;
+import org.uci.lids.utils.Potential;
 
 import java.util.*;
 
@@ -15,112 +16,98 @@ public class Example {
     public static void main(String[] args) {
         List<Node> nodes = new ArrayList<Node>();
         int N = 100;
-        final int NO_STATES = 3;
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
 
-        Random r = new Random(30);
-        for (int i = 0; i < N; i++) {
-            double randDouble = r.nextDouble();
-            Node node;
-            if (randDouble < 2d / 3)
-                node = createNode(Node.Category.Chance, NO_STATES, i);
-            else if (randDouble < 5d / 6)
-                node = createNode(Node.Category.Decision, NO_STATES
-                        , i);
-            else
-                node = createNode(Node.Category.Utility, NO_STATES, i);
-            nodes.add(node);
-            bn.addNode(node);
-        }
+        Node A = new Node(Node.VariableType.Categorical, Node.Category.Chance, "A");
+        Node B = new Node(Node.VariableType.Categorical, Node.Category.Chance, "B");
+        Node C = new Node(Node.VariableType.Categorical, Node.Category.Chance, "C");
+        Node T = new Node(Node.VariableType.Categorical, Node.Category.Chance, "T");
+        Node D1 = new Node(Node.VariableType.Categorical, Node.Category.Decision, "D1");
+        Node D2 = new Node(Node.VariableType.Categorical, Node.Category.Decision, "D2");
+        Node V1 = new Node(Node.VariableType.Categorical, Node.Category.Utility, "V1");
+        Node V2 = new Node(Node.VariableType.Categorical, Node.Category.Utility, "V2");
 
-        for (int i = 0; i < N; i++) {
-            for (int j = i + 1; j < N; j++) {
-                if (nodes.get(i).getCategory() != Node.Category.Utility)
-                    bn.addLink(nodes.get(i), nodes.get(j));
-            }
-        }
-        for (int k = 0; k < 5 * (N * N); k++) {
-            int i = r.nextInt(N);
-            int j = r.nextInt(N);
-            bn.removeLink(nodes.get(i), nodes.get(j));
-        }
+        A.setStates(new String[]{"Y", "N"});
+        B.setStates(new String[]{"Y", "N"});
+        C.setStates(new String[]{"Y", "N"});
+        T.setStates(new String[]{"Y", "N"});
+        D1.setStates(new String[]{"D1_1", "D1_2"});
+        D2.setStates(new String[]{"D2_1", "D2_2"});
+
+        A.setPotential(new double[]{0.2, 0.8, 0.8, 0.2});
+        B.setPotential(new double[]{0.8, 0.2, 0.2, 0.8});
+        C.setPotential(new double[]{0.9, 0.5, 0.5, 0.9, 0.1, 0.5, 0.5, 0.1});
+        T.setPotential(new double[]{0.9, 0.5, 0.5, 0.1, 0.1, 0.5, 0.5, 0.9});
+        V1.setPotential(new double[]{3, 0, 0, 2});
+        V2.setPotential(new double[]{10, 0});
+
+        bn.addNode(A);
+        bn.addNode(B);
+        bn.addNode(C);
+        bn.addNode(T);
+        bn.addNode(D1);
+        bn.addNode(D2);
+        bn.addNode(V1);
+        bn.addNode(V2);
+
+        bn.addLink(D1, A);
+        bn.addLink(A, B);
+        bn.addLink(B, C);
+        bn.addLink(D2, C);
+        bn.addLink(B, T);
+        bn.addLink(A, T);
+        bn.addLink(A, V1);
+        bn.addLink(D2, V1);
+        bn.addLink(C, V2);
+        bn.addLink(T, D2);
 
 
-        Node prevNode = null;
-        LinkedList<Node> topologicalOrderedNodes = bn.getTopologicalOrderedNodes();
-        for (Node node : topologicalOrderedNodes)
-            if (node.getCategory() == Node.Category.Decision) {
-                if (prevNode != null)
-                    bn.addLink(prevNode, node);
-                prevNode = node;
+        Potential pa = getChancePotential(bn, A);
+        Potential pb = getChancePotential(bn, B);
+        Potential pc = getChancePotential(bn, C);
+        Potential pt = getChancePotential(bn, T);
+        Potential pv1 = getUtilityPotential(bn, V1);
+        Potential pv2 = getUtilityPotential(bn, V2);
 
-                boolean hasChanceChildren = false;
-                for (Node child : bn.getChildren(node))
-                    if (child.getCategory() == Node.Category.Chance) {
-                        hasChanceChildren = true;
-                        break;
-                    }
-                if (!hasChanceChildren)
-                    for (int i = topologicalOrderedNodes.indexOf(node) + 1; i < topologicalOrderedNodes.size(); i++) {
-                        if (topologicalOrderedNodes.get(i).getCategory() == Node.Category.Chance) {
-                            bn.addLink(node, topologicalOrderedNodes.get(i));
-                            hasChanceChildren = true;
-                            break;
-                        }
-                    }
-                if (!hasChanceChildren) {
-                    Node newNode = createNode(Node.Category.Chance, NO_STATES, N++);
-                    nodes.add(newNode);
-                    bn.addNode(newNode);
-                    bn.addLink(node, newNode);
-                }
-            }
+        // p(A|D1)
+        // p(B|A)
+        // p(C|B,D2)
+        // p(T|A,B)
+        // V1(A,D2)
+        // V2(C)
 
-        List<DirectedGraph<Node>> connectedComponents = bn.getConnectedComponents();
-        List<Node> connectingNodes = new ArrayList<Node>();
-        for (DirectedGraph<Node> graph : connectedComponents) {
-            boolean foundNonUtilityNode = false;
-            for (Node node : graph.getNodes())
-                if (node.getCategory() != Node.Category.Utility) {
-                    connectingNodes.add(node);
-                    foundNonUtilityNode = true;
-                    break;
-                }
-            if (!foundNonUtilityNode) {
-                bn.removeSubGraph(graph);
-                nodes.removeAll(graph.getNodes());
-            }
+        Potential phi_c = pc.project(getNodeSet(B, D2));
+        Potential psi_c = pc.multiply(pv2).project(getNodeSet(B, D2)).divide(phi_c);
 
-        }
+        Potential phi_b = phi_c.multiply(pt).multiply(pb).project(getNodeSet(A, T, D2));
+        Potential psi_b = phi_c.multiply(pt).multiply(pb).multiply(psi_c.add(pv1)).project(getNodeSet(A, T, D2)).divide(phi_b);
 
-        for (int i = 0; i < connectingNodes.size() - 1; i++) {
-            bn.addLink(connectingNodes.get(i), connectingNodes.get(i + 1));
-        }
+        Potential phi_last = phi_b.multiply(pa);
+        Potential psi_last = phi_b.multiply(pa).multiply(psi_b);
 
-        for (int i = 0; i < nodes.size(); i++) {
-            Set<Node> parents = bn.getParents(nodes.get(i));
-            int size = (int) Math.round(Math.pow(NO_STATES, parents.size() + 1));
-            double[] potential = new double[size];
-            for (int j = 0; j < size; j++) {
-                potential[j] = r.nextDouble();
-            }
+        Potential ptd = phi_last.project(getNodeSet(T, D1, D2));
+        System.out.println("D2 = " + psi_last.project(getNodeSet(T, D1, D2)).maxProject(getNodeSet(T,D1)).getMaxState());
+        System.out.println("MEU2 = " + psi_last.project(getNodeSet(T, D1, D2)).maxProject(getNodeSet(T, D1)).getPotential().divide(ptd));
 
-            for (int k = 0; k < size / NO_STATES; k++) {
-                double sum = 0;
-                for (int j = k; j < size; j += size / NO_STATES) {
-                    sum += potential[j];
-                }
-                for (int j = k; j < size; j += size / NO_STATES) {
-                    potential[j] /= sum;
-                }
-            }
-            nodes.get(i).setPotential(potential);
-        }
+        System.out.println("D1 = " + psi_last.project(getNodeSet(T, D1, D2)).maxProject(getNodeSet(T, D1)).getPotential().project(getNodeSet(D1)).maxProject(getNodeSet()).getMaxState());
+        System.out.println("MEU1 = " + psi_last.project(getNodeSet(T, D1, D2)).maxProject(getNodeSet(T, D1)).getPotential().project(getNodeSet(D1)).maxProject(getNodeSet()).getPotential());
+
 
         if (logger.getEffectiveLevel() == Level.DEBUG)
             Misc.saveGraphOnDisk("graph.html", bn);
         LQGInfluenceDiagram lid = new LQGInfluenceDiagram(bn);
         lid.getOptimalPolicy();
+    }
+
+    private static HashSet<Node> getNodeSet(Node... nodes) {
+        return new HashSet<Node>(Arrays.asList(nodes));
+    }
+
+    private static Potential getChancePotential(DirectedGraph<Node> bn, Node n) {
+        return new Potential((LinkedHashSet<Node>) bn.getFamily(n), n.getPotential());
+    }
+    private static Potential getUtilityPotential(DirectedGraph<Node> bn, Node n) {
+        return new Potential(new LinkedHashSet<Node>(bn.getParents(n)), n.getPotential());
     }
 
     private static Node createNode(Node.Category category, int NO_STATES, int i) {
