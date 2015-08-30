@@ -9,27 +9,8 @@ import java.util.*;
  */
 public class Potential {
 
-    public class MaxProjectAnswer {
-        private Potential potential;
-        private Map<Node, Potential> maxState;
-
-        public MaxProjectAnswer(Potential potential, Map<Node, Potential> maxState) {
-            this.potential = potential;
-            this.maxState = maxState;
-        }
-
-        public Potential getPotential() {
-            return potential;
-        }
-
-        public Map<Node, Potential> getMaxState() {
-            return maxState;
-        }
-    }
-
     private LinkedHashSet<Node> variables;
     private double[] data;
-
     public Potential(LinkedHashSet<Node> variables, double[] data) {
         this.variables = variables;
         this.data = data;
@@ -236,8 +217,8 @@ public class Potential {
 
         Potential maxPotential = new Potential((LinkedHashSet<Node>) projVariables);
         HashMap<Node, Potential> maxStates = new HashMap<Node, Potential>();
-        for(Node n: eliminatedVariables) {
-            maxStates.put(n, new Potential((LinkedHashSet<Node>)projVariables));
+        for (Node n : eliminatedVariables) {
+            maxStates.put(n, new Potential((LinkedHashSet<Node>) projVariables));
         }
 
 
@@ -268,10 +249,10 @@ public class Potential {
             for (int j : eliminatedBits)
                 eliminatedInd.add(ind.get(j));
 
-            if (this.data[this.getPotPosition(ind)] >maxPotential.data[maxPotential.getPotPosition(projectionInd)]) {
-                maxPotential.data[maxPotential.getPotPosition(projectionInd)] =this.data[this.getPotPosition(ind)];
+            if (this.data[this.getPotPosition(ind)] > maxPotential.data[maxPotential.getPotPosition(projectionInd)]) {
+                maxPotential.data[maxPotential.getPotPosition(projectionInd)] = this.data[this.getPotPosition(ind)];
                 int c = 0;
-                for(Node n: eliminatedVariables) {
+                for (Node n : eliminatedVariables) {
                     Potential pot = maxStates.get(n);
                     pot.data[pot.getPotPosition(projectionInd)] = ind.get(eliminatedBits[c]);
                     c++;
@@ -279,9 +260,8 @@ public class Potential {
             }
         }
 
-        return new MaxProjectAnswer(maxPotential,maxStates);
+        return new MaxProjectAnswer(maxPotential, maxStates);
     }
-
 
     public List<Integer> getIndex(int potPositon) {
         List<Integer> index = new ArrayList<Integer>();
@@ -342,6 +322,24 @@ public class Potential {
         sb.append("}\n");
         return sb.toString();
         //return variables.toString();
+    }
+
+    public class MaxProjectAnswer {
+        private Potential potential;
+        private Map<Node, Potential> maxState;
+
+        public MaxProjectAnswer(Potential potential, Map<Node, Potential> maxState) {
+            this.potential = potential;
+            this.maxState = maxState;
+        }
+
+        public Potential getPotential() {
+            return potential;
+        }
+
+        public Map<Node, Potential> getMaxState() {
+            return maxState;
+        }
     }
 
 }

@@ -88,7 +88,7 @@ public class Example {
         Potential psi_last = phi_b.multiply(pa).multiply(psi_b);
 
         Potential ptd = phi_last.project(getNodeSet(T, D1, D2));
-        System.out.println("D2 = " + psi_last.project(getNodeSet(T, D1, D2)).maxProject(getNodeSet(T,D1)).getMaxState());
+        System.out.println("D2 = " + psi_last.project(getNodeSet(T, D1, D2)).maxProject(getNodeSet(T, D1)).getMaxState());
         System.out.println("MEU2 = " + psi_last.project(getNodeSet(T, D1, D2)).maxProject(getNodeSet(T, D1)).getPotential().divide(ptd));
 
         System.out.println("D1 = " + psi_last.project(getNodeSet(T, D1, D2)).maxProject(getNodeSet(T, D1)).getPotential().project(getNodeSet(D1)).maxProject(getNodeSet()).getMaxState());
@@ -108,6 +108,7 @@ public class Example {
     private static Potential getChancePotential(DirectedGraph<Node> bn, Node n) {
         return new Potential((LinkedHashSet<Node>) bn.getFamily(n), n.getPotential());
     }
+
     private static Potential getUtilityPotential(DirectedGraph<Node> bn, Node n) {
         return new Potential(new LinkedHashSet<Node>(bn.getParents(n)), n.getPotential());
     }
