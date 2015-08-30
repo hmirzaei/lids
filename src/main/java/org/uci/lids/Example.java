@@ -76,6 +76,8 @@ public class Example {
         // V1(A,D2)
         // V2(C)
 
+        // strong jtree: (D1,T,D2,A) <--- [T,D2,A] <--- (B,T,D2,A) <--- [B,D2] <--- (B,D2,C)
+
         Potential phi_c = pc.project(getNodeSet(B, D2));
         Potential psi_c = pc.multiply(pv2).project(getNodeSet(B, D2)).divide(phi_c);
 
