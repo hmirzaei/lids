@@ -24,45 +24,79 @@ public class LQGInfluenceDiagram {
     private void updateNodePotentials(Map<Node, Integer> evidences) {
         nodePotentialMap = new HashMap<Node, Potential>();
         for (Node n : bayesianNetwork.getNodes()) {
-            nodePotentialMap.put(n, new Potential((LinkedHashSet<Node>) bayesianNetwork.getFamily(n), n.getPotential()));
+            if (n.getCategory() == Node.Category.Chance)
+                nodePotentialMap.put(n, new Potential((LinkedHashSet<Node>) bayesianNetwork.getFamily(n), n.getPotential()));
+            else if (n.getCategory() == Node.Category.Utility)
+                nodePotentialMap.put(n, new Potential((LinkedHashSet<Node>) bayesianNetwork.getParents(n), n.getPotential()));
         }
-        for (Map.Entry<Node, Integer> entry : evidences.entrySet()) {
-            Node n = entry.getKey();
-            for (Node member : bayesianNetwork.getChildren(n))
-                this.getNodePotential(member).applyEvidence(n, entry.getValue());
-            this.getNodePotential(n).applyEvidence(n, entry.getValue());
+        if (evidences != null) {
+            for (Map.Entry<Node, Integer> entry : evidences.entrySet()) {
+                Node n = entry.getKey();
+                for (Node member : bayesianNetwork.getChildren(n))
+                    this.getNodePotential(member).applyEvidence(n, entry.getValue());
+                this.getNodePotential(n).applyEvidence(n, entry.getValue());
+            }
         }
     }
 
+    public Map<Node, Potential> getOptimalStrategy() {
+        return this.getOptimalStrategy(null);
+    }
 
-    public void getOptimalPolicy() {
+    public Map<Node, Potential> getOptimalStrategy(Map<Node, Integer> evidences) {
+        this.updateNodePotentials(evidences);
+        Map<Node, Potential> strategy = new HashMap<Node, Potential>();
+
         List<DirectedGraph<Node>> connectedComponents = this.bayesianNetwork.getConnectedComponents();
         for (DirectedGraph<Node> graph : connectedComponents) {
-            getConnectedComponent‌OptimalPolicy(graph);
+            getConnectedComponent‌OptimalStrategy(graph, strategy);
         }
+        return strategy;
     }
 
-    public void getConnectedComponent‌OptimalPolicy(DirectedGraph<Node> bayesianNetwork) {
+    private void getConnectedComponent‌OptimalStrategy(DirectedGraph<Node> bayesianNetwork, Map<Node, Potential> strategy) {
 
         List<Set<Node>> temporalOrder = getTemporalOrder(bayesianNetwork);
+        Map<Node, Integer> temporalGroupNumbers = new HashMap<Node, Integer>();
+        int groupNumber = 0;
+        for (Set<Node> group : temporalOrder) {
+            for (Node n : group)
+                temporalGroupNumbers.put(n, groupNumber);
+            groupNumber++;
+        }
+
         logger.debug("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
         UndirectedGraph<Node> moralized = getMoralizedInfluenceDiagram(bayesianNetwork);
         if (logger.getEffectiveLevel() == Level.DEBUG)
-            Misc.saveGraphOnDisk("moralized.html", moralized);
+            Misc.saveGraphOnDisk("moralized_" + Misc.asSortedList(bayesianNetwork.getNodes()) + ".html", moralized);
 
         List<UndirectedGraph<Node>> connectedComponents = moralized.getConnectedComponents();
 
         for (UndirectedGraph<Node> graph : connectedComponents) {
             graph.triangulate(temporalOrder);
             if (logger.getEffectiveLevel() == Level.DEBUG)
-                Misc.saveGraphOnDisk("triangulated.html", graph);
+                Misc.saveGraphOnDisk("triangulated_" + Misc.asSortedList(graph.getNodes()) + ".html", graph);
             UndirectedGraph<Node>.JunctionTreeAndRoot jtAndRoot = graph.getJunctionTree(temporalOrder);
             logger.debug("RootClique = " + jtAndRoot.rootClique);
             DirectedGraph<JunctionTreeNode<Node>> jt = jtAndRoot.junctionTree;
             if (logger.getEffectiveLevel() == Level.DEBUG)
-                Misc.saveGraphOnDisk("jtree.html", jt);
+                Misc.saveGraphOnDisk("jtree_" + Misc.asSortedList(graph.getNodes()) + ".html", jt);
+
+
+            DirectedGraph<Node> subGraph = bayesianNetwork.getSubGraph(graph.getNodes());
+            Map<JunctionTreeNode<Node>, Set<Potential>> chanceCliquePotentials = getChanceCliquePotentials(subGraph, jt);
+            Map<JunctionTreeNode<Node>, Set<Potential>> utilityCliquePotentials = getUtilityCliquePotentials(bayesianNetwork, jt);
+            logger.debug("chanceCliquePotentials = " + chanceCliquePotentials);
+            logger.debug("utilityCliquePotentials = " + utilityCliquePotentials);
+            Map<JunctionTreeNode<Node>, Potential> chanceMessages = getChanceInitializedMessages(jt); // might be redundant
+            Map<JunctionTreeNode<Node>, Potential> utilityMessages = getUtilityInitializedMessages(jt); // might be redundant
+
+            List<JunctionTreeNode<Node>> topologicalSorted = jt.getTopologicalOrderedNodes();
+            performDecisionMessagePassing(jt, chanceCliquePotentials, utilityCliquePotentials, strategy,
+                    topologicalSorted, chanceMessages, utilityMessages, temporalGroupNumbers);
         }
     }
+
 
     private UndirectedGraph<Node> getMoralizedInfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
         List<Edge<Node>> edges = bayesianNetwork.getEdgeList();
@@ -151,11 +185,12 @@ public class LQGInfluenceDiagram {
 
         Iterator<JunctionTreeNode<Node>> it = jt.getNodes().iterator();
         JunctionTreeNode<Node> root;
+        // find a leave
         do {
             root = it.next();
         } while (jt.getAdjacents(root).size() > 1);
 
-        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = getCliquePotentials(graph, jt);
+        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = getChanceCliquePotentials(graph, jt);
         Map<Edge<JunctionTreeNode<Node>>, Potential> messages = getInitializedMessages(jt);
 
         DirectedGraph<JunctionTreeNode<Node>> jtd = jt.getTreeSinkTo(root);
@@ -210,7 +245,120 @@ public class LQGInfluenceDiagram {
         }
     }
 
-    private Map<Edge<JunctionTreeNode<Node>>, Potential> getInitializedMessages(UndirectedGraph<JunctionTreeNode<Node>> jt) {
+    private void performDecisionMessagePassing(DirectedGraph<JunctionTreeNode<Node>> sjt,
+                                               Map<JunctionTreeNode<Node>, Set<Potential>> chanceCliquePotentials,
+                                               Map<JunctionTreeNode<Node>, Set<Potential>> utilityCliquePotentials,
+                                               Map<Node, Potential> strategy, List<JunctionTreeNode<Node>> topologicalSorted,
+                                               Map<JunctionTreeNode<Node>, Potential> chanceMessages,
+                                               Map<JunctionTreeNode<Node>, Potential> utilityMessages,
+                                               final Map<Node, Integer> temporalGroupNumber) {
+
+
+        for (JunctionTreeNode<Node> jtNode : topologicalSorted) {
+            if (jtNode instanceof CliqueNode) {
+                logger.debug(" ======================================= ");
+                logger.debug("jtNode = " + jtNode);
+                Set<JunctionTreeNode<Node>> parents = sjt.getParents(jtNode);
+                logger.debug("parents = " + parents);
+
+                Set<Potential> nodeChanceMessages = new HashSet<Potential>(chanceCliquePotentials.get(jtNode));
+                Set<Potential> nodeUtilityMessages = new HashSet<Potential>(utilityCliquePotentials.get(jtNode));
+                for (JunctionTreeNode<Node> member : parents) {
+                    nodeChanceMessages.add(chanceMessages.get(member));
+                    nodeUtilityMessages.add(utilityMessages.get(member));
+                }
+
+                logger.debug("nodeChanceMessages = " + nodeChanceMessages);
+                logger.debug("nodeUtilityMessages = " + nodeUtilityMessages);
+                Potential pChance = Potential.multiply(nodeChanceMessages).multiply(Potential.unityPotential(jtNode.getMembers()));
+                Potential pUtility = Potential.sum(nodeUtilityMessages).multiply(Potential.unityPotential(jtNode.getMembers()));
+                logger.debug("pChance = " + pChance);
+                logger.debug("pUtility = " + pUtility);
+
+                Set<Node> projectionNodes;
+                if (!sjt.getChildren(jtNode).isEmpty()) {
+                    JunctionTreeNode<Node> child = sjt.getChildren(jtNode).iterator().next();
+                    projectionNodes = child.getMembers();
+                } else { // [sigh] we are in root now
+                    projectionNodes = new HashSet<Node>();
+                }
+
+                Set<Node> eliminatedNodes = new HashSet<Node>(pChance.getVariables());
+                eliminatedNodes.removeAll(projectionNodes);
+                logger.debug("eliminatedNodes = " + eliminatedNodes);
+
+                // init projectionNodes for step by step elimination
+                projectionNodes = new HashSet<Node>(pChance.getVariables());
+                List<Node> orderedEliminatedNodes = Misc.asSortedList(eliminatedNodes, new Comparator<Node>() {
+                    public int compare(Node o1, Node o2) {
+                        return temporalGroupNumber.get(o2).compareTo(temporalGroupNumber.get(o1)); // sort descending
+                    }
+                });
+                logger.debug("orderedEliminatedNodes = " + orderedEliminatedNodes);
+
+                Iterator<Node> eliminatedNodeIterator = orderedEliminatedNodes.iterator();
+                int prevGroupNumber = temporalGroupNumber.get(orderedEliminatedNodes.get(0));
+                Set<Node> nodesToEliminateTogether = new HashSet<Node>();
+                while (eliminatedNodeIterator.hasNext()) {
+                    Node node = eliminatedNodeIterator.next();
+                    Integer nodeGroupNumber = temporalGroupNumber.get(node);
+                    if (nodeGroupNumber == prevGroupNumber) {
+                        nodesToEliminateTogether.add(node);
+                    } else {
+                        logger.debug("nodesToEliminateTogether = " + nodesToEliminateTogether);
+                        projectionNodes.removeAll(nodesToEliminateTogether);
+                        Potential newPChance;
+                        Potential newPUtility;
+                        if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Chance) {
+                            newPChance = pChance.project(projectionNodes);
+                            newPUtility = pChance.multiply(pUtility).project(projectionNodes).divide(newPChance);
+                        } else if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Decision) {
+                            newPChance = pChance.maxProject(projectionNodes, pChance.multiply(pUtility)).getPotential();
+                            newPUtility = pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(newPChance);
+                            logger.debug("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
+                            logger.debug("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
+
+                        } else {
+                            throw new UnsupportedOperationException("Cannot eliminate a utility node.");
+                        }
+                        pChance = newPChance;
+                        pUtility = newPUtility;
+
+                        nodesToEliminateTogether = new HashSet<Node>();
+                        nodesToEliminateTogether.add(node);
+                        prevGroupNumber = nodeGroupNumber;
+                    }
+                }
+                logger.debug("nodesToEliminateTogether = " + nodesToEliminateTogether);
+                projectionNodes.removeAll(nodesToEliminateTogether);
+                Potential newPChance;
+                Potential newPUtility;
+                if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Chance) {
+                    newPChance = pChance.project(projectionNodes);
+                    newPUtility = pChance.multiply(pUtility).project(projectionNodes).divide(newPChance);
+                } else if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Decision) {
+                    newPChance = pChance.maxProject(projectionNodes, pChance.multiply(pUtility)).getPotential();
+                    newPUtility = pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(newPChance);
+                    logger.info("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
+                    logger.debug("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
+                } else {
+                    throw new UnsupportedOperationException("Cannot eliminate a utility node.");
+                }
+                pChance = newPChance;
+                pUtility = newPUtility;
+
+                if (!sjt.getChildren(jtNode).isEmpty()) {
+                    JunctionTreeNode<Node> child = sjt.getChildren(jtNode).iterator().next();
+                    Potential chanceMessage = chanceMessages.get(child);
+                    Potential utilityMessage = utilityMessages.get(child);
+                    chanceMessages.put(child, chanceMessage.multiply(pChance));
+                    utilityMessages.put(child, utilityMessage.add(pUtility));
+                }
+            }
+        }
+    }
+
+    private Map<Edge<JunctionTreeNode<Node>>, Potential> getInitializedMessages(AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jt) {
         Map<Edge<JunctionTreeNode<Node>>, Potential> messages = new HashMap<Edge<JunctionTreeNode<Node>>, Potential>();
 
         for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
@@ -221,14 +369,34 @@ public class LQGInfluenceDiagram {
         return messages;
     }
 
-    private Map<JunctionTreeNode<Node>, Set<Potential>> getCliquePotentials(DirectedGraph<Node> graph, UndirectedGraph<JunctionTreeNode<Node>> jt) {
+    private Map<JunctionTreeNode<Node>, Potential> getUtilityInitializedMessages(DirectedGraph<JunctionTreeNode<Node>> jt) {
+        Map<JunctionTreeNode<Node>, Potential> messages = new HashMap<JunctionTreeNode<Node>, Potential>();
+
+        for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
+            if (jtNode instanceof SeparatorNode)
+                messages.put(jtNode, Potential.zeroPotential());
+        }
+        return messages;
+    }
+
+    private Map<JunctionTreeNode<Node>, Potential> getChanceInitializedMessages(DirectedGraph<JunctionTreeNode<Node>> jt) {
+        Map<JunctionTreeNode<Node>, Potential> messages = new HashMap<JunctionTreeNode<Node>, Potential>();
+
+        for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
+            if (jtNode instanceof SeparatorNode)
+                messages.put(jtNode, Potential.unityPotential());
+        }
+        return messages;
+    }
+
+    private Map<JunctionTreeNode<Node>, Set<Potential>> getChanceCliquePotentials(DirectedGraph<Node> graph, AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jtree) {
         Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = new HashMap<JunctionTreeNode<Node>, Set<Potential>>();
         Set<Node> nodesCopy = new HashSet<Node>(graph.getNodes());
-        for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
+        for (JunctionTreeNode<Node> jtNode : jtree.getNodes()) {
             if (jtNode instanceof CliqueNode) {
                 Set<Node> nodesToRemove = new HashSet<Node>();
                 for (Node node : nodesCopy) {
-                    if (jtNode.getMembers().containsAll(graph.getFamily(node))) {
+                    if (node.getCategory() == Node.Category.Chance && jtNode.getMembers().containsAll(graph.getFamily(node))) {
                         Potential p = getNodePotential(node);
                         if (cliquePotentials.containsKey(jtNode))
                             cliquePotentials.get(jtNode).add(p);
@@ -244,6 +412,36 @@ public class LQGInfluenceDiagram {
                 if (!cliquePotentials.containsKey(jtNode)) {
                     Set<Potential> s = new HashSet<Potential>();
                     s.add(Potential.unityPotential());
+                    cliquePotentials.put(jtNode, s);
+                }
+            }
+        }
+        return cliquePotentials;
+    }
+
+    private Map<JunctionTreeNode<Node>, Set<Potential>> getUtilityCliquePotentials(DirectedGraph<Node> graph, AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jtree) {
+        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = new HashMap<JunctionTreeNode<Node>, Set<Potential>>();
+        Set<Node> nodesCopy = new HashSet<Node>(graph.getNodes());
+        for (JunctionTreeNode<Node> jtNode : jtree.getNodes()) {
+            if (jtNode instanceof CliqueNode) {
+                Set<Node> nodesToRemove = new HashSet<Node>();
+                for (Node node : nodesCopy) {
+                    if (node.getCategory() == Node.Category.Utility && jtNode.getMembers().containsAll(graph.getParents(node))) {
+                        Potential p = getNodePotential(node);
+                        if (cliquePotentials.containsKey(jtNode))
+                            cliquePotentials.get(jtNode).add(p);
+                        else {
+                            Set<Potential> s = new HashSet<Potential>();
+                            s.add(p);
+                            cliquePotentials.put(jtNode, s);
+                        }
+                        nodesToRemove.add(node);
+                    }
+                }
+                nodesCopy.removeAll(nodesToRemove);
+                if (!cliquePotentials.containsKey(jtNode)) {
+                    Set<Potential> s = new HashSet<Potential>();
+                    s.add(Potential.zeroPotential());
                     cliquePotentials.put(jtNode, s);
                 }
             }

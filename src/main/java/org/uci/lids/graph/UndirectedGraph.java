@@ -357,6 +357,13 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
         return super.generateVisualizationHtml(false, title);
     }
 
+    @Override
+    public UndirectedGraph<E> getSubGraph(Set<E> nodes) {
+        UndirectedGraph<E> result = new UndirectedGraph<E>(nodes);
+        for (E e : nodes) for (E a : this.getAdjacents(e)) if (nodes.contains(a)) result.addLink(e, a);
+        return result;
+    }
+
     private void assertStrength(DirectedGraph<JunctionTreeNode<E>> rootedJunctionTree, List<Set<E>> temporalOrder, JunctionTreeNode<E> root) {
         for (JunctionTreeNode<E> parent : rootedJunctionTree.getParents(root)) {
             JunctionTreeNode<E> grandParent = rootedJunctionTree.getParents(parent).iterator().next();

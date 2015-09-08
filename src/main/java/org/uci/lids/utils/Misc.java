@@ -12,6 +12,20 @@ import java.util.*;
  * Created by Hamid Mirzaei on 4/6/15.
  */
 public class Misc {
+    public static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c) {
+        return Misc.asSortedList(c, new Comparator<T>() {
+            public int compare(T o1, T o2) {
+                return o1.compareTo(o2);
+            }
+        });
+    }
+
+    public static <T extends Comparable<? super T>> List<T> asSortedList(Collection<T> c, Comparator<? super T> comparator) {
+        List<T> list = new ArrayList<T>(c);
+        java.util.Collections.sort(list, comparator);
+        return list;
+    }
+
     public static <K, V extends Comparable<? super V>> Map<K, V>
     sortByValue(Map<K, V> map) {
         List<Map.Entry<K, V>> list =

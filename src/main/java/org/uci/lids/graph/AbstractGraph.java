@@ -18,6 +18,9 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
 
     public abstract void replaceNode(E e1, E e2);
 
+    public Set<E> getAdjacents(E e) {
+        return vertices.get(e).getAdjacents();
+    }
 
     public abstract List<Edge<E>> getEdgeList();
 
@@ -29,6 +32,9 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
             this.removeNode(e);
         }
     }
+
+
+    public abstract AbstractGraph<E, Vertex> getSubGraph(Set<E> nodes);
 
     public void addLink(E node1, E node2) {
         this.vertices.get(node1).addLinkTo(vertices.get(node2));

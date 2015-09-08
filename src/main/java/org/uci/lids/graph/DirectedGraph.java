@@ -113,7 +113,7 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
     }
 
     public Set<E> getParents(E e) {
-        return Collections.unmodifiableSet(vertices.get(e).getParents());
+        return vertices.get(e).getParents();
     }
 
     public Set<E> getChildren(E e) {
@@ -151,6 +151,13 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
 
     public String generateVisualizationHtml(String title) {
         return super.generateVisualizationHtml(true, title);
+    }
+
+    @Override
+    public DirectedGraph<E> getSubGraph(Set<E> nodes) {
+        DirectedGraph<E> result = new DirectedGraph<E>(nodes);
+        for (E e : nodes) for (E c : this.getChildren(e)) if (nodes.contains(c)) result.addLink(e, c);
+        return result;
     }
 
     private void doDFSForConnectedComponents(UndirectedGraph<E> skeleton, LinkedHashMap<E, DirectedVertex<E>> vertices, Set<E> visited, E e) {

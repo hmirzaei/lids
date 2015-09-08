@@ -1,7 +1,6 @@
 package org.uci.lids.graph;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -24,11 +23,19 @@ public class DirectedVertex<E> extends AbstractVertex<E, DirectedVertex<E>> {
     }
 
     public Set<E> getParents() {
-        return Collections.unmodifiableSet(parents);
+        return parents;
     }
 
     public Set<E> getChildren() {
-        return Collections.unmodifiableSet(children);
+        return children;
+    }
+
+    @Override
+    public Set<E> getAdjacents() {
+        Set<E> adjacents = new LinkedHashSet<E>();
+        adjacents.addAll(parents);
+        adjacents.addAll(children);
+        return adjacents;
     }
 
     @Override

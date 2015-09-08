@@ -1,6 +1,8 @@
 package org.uci.lids.graph;
 
 
+import java.util.Set;
+
 /**
  * Created by hamid on 3/16/15.
  */
@@ -18,6 +20,8 @@ public abstract class AbstractVertex<E, V> {
     public abstract void removeLinkTo(V e);
 
     public abstract int getDegree();
+
+    public abstract Set<E> getAdjacents();
 
     public E getContent() {
         return content;

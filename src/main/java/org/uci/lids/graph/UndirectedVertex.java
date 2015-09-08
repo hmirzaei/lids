@@ -22,6 +22,7 @@ public class UndirectedVertex<E> extends AbstractVertex<E, UndirectedVertex<E>> 
         return adjacents.size();
     }
 
+    @Override
     public Set<E> getAdjacents() {
         return adjacents;
     }

@@ -11,6 +11,7 @@ public class Potential {
 
     private LinkedHashSet<Node> variables;
     private double[] data;
+
     public Potential(LinkedHashSet<Node> variables, double[] data) {
         this.variables = variables;
         this.data = data;
@@ -31,9 +32,37 @@ public class Potential {
         return result;
     }
 
+    public static Potential sum(Set<Potential> potentialSet) {
+        Iterator<Potential> it = potentialSet.iterator();
+        Potential result = it.next();
+
+        while (it.hasNext()) {
+            result = result.add(it.next());
+        }
+        return result;
+    }
+
     public static Potential unityPotential() {
         LinkedHashSet<Node> emptySet = new LinkedHashSet<Node>();
         return new Potential(emptySet, new double[]{1});
+    }
+
+    public static Potential unityPotential(Set<Node> nodes) {
+        LinkedHashSet<Node> nodeSet = new LinkedHashSet<Node>(nodes);
+        Potential result = new Potential(nodeSet);
+        for (int i = 0; i < result.data.length; i++) {
+            result.data[i] = 1;
+        }
+        return result;
+    }
+
+    public static Potential zeroPotential() {
+        LinkedHashSet<Node> emptySet = new LinkedHashSet<Node>();
+        return new Potential(emptySet, new double[]{0});
+    }
+
+    public LinkedHashSet<Node> getVariables() {
+        return variables;
     }
 
     public double[] getData() {
@@ -209,6 +238,10 @@ public class Potential {
     }
 
     public MaxProjectAnswer maxProject(Set<Node> projVariables) {
+        return maxProject(projVariables, this);
+    }
+
+    public MaxProjectAnswer maxProject(Set<Node> projVariables, Potential objectivePotential) {
         projVariables = new LinkedHashSet<Node>(projVariables);  // make a copy
         projVariables.retainAll(this.variables);
 
@@ -216,6 +249,7 @@ public class Potential {
         eliminatedVariables.removeAll(projVariables);
 
         Potential maxPotential = new Potential((LinkedHashSet<Node>) projVariables);
+        Potential projPotential = new Potential((LinkedHashSet<Node>) projVariables);
         HashMap<Node, Potential> maxStates = new HashMap<Node, Potential>();
         for (Node n : eliminatedVariables) {
             maxStates.put(n, new Potential((LinkedHashSet<Node>) projVariables));
@@ -249,8 +283,9 @@ public class Potential {
             for (int j : eliminatedBits)
                 eliminatedInd.add(ind.get(j));
 
-            if (this.data[this.getPotPosition(ind)] > maxPotential.data[maxPotential.getPotPosition(projectionInd)]) {
-                maxPotential.data[maxPotential.getPotPosition(projectionInd)] = this.data[this.getPotPosition(ind)];
+            if (objectivePotential.data[this.getPotPosition(ind)] > maxPotential.data[maxPotential.getPotPosition(projectionInd)]) {
+                maxPotential.data[maxPotential.getPotPosition(projectionInd)] = objectivePotential.data[this.getPotPosition(ind)];
+                projPotential.data[maxPotential.getPotPosition(projectionInd)] = this.data[this.getPotPosition(ind)];
                 int c = 0;
                 for (Node n : eliminatedVariables) {
                     Potential pot = maxStates.get(n);
@@ -260,7 +295,7 @@ public class Potential {
             }
         }
 
-        return new MaxProjectAnswer(maxPotential, maxStates);
+        return new MaxProjectAnswer(projPotential, maxStates);
     }
 
     public List<Integer> getIndex(int potPositon) {
@@ -341,5 +376,6 @@ public class Potential {
             return maxState;
         }
     }
+
 
 }
