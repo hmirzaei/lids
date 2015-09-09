@@ -68,19 +68,19 @@ public class LQGInfluenceDiagram {
         logger.debug("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
         UndirectedGraph<Node> moralized = getMoralizedInfluenceDiagram(bayesianNetwork);
         if (logger.getEffectiveLevel() == Level.DEBUG)
-            Misc.saveGraphOnDisk("moralized_" + Misc.asSortedList(bayesianNetwork.getNodes()) + ".html", moralized);
+            Misc.saveGraphOnDisk("moralized_" + Misc.asSortedList(bayesianNetwork.getNodes()).toString(), moralized);
 
         List<UndirectedGraph<Node>> connectedComponents = moralized.getConnectedComponents();
 
         for (UndirectedGraph<Node> graph : connectedComponents) {
             graph.triangulate(temporalOrder);
             if (logger.getEffectiveLevel() == Level.DEBUG)
-                Misc.saveGraphOnDisk("triangulated_" + Misc.asSortedList(graph.getNodes()) + ".html", graph);
+                Misc.saveGraphOnDisk("triangulated_" + Misc.asSortedList(graph.getNodes()), graph);
             UndirectedGraph<Node>.JunctionTreeAndRoot jtAndRoot = graph.getJunctionTree(temporalOrder);
             logger.debug("RootClique = " + jtAndRoot.rootClique);
             DirectedGraph<JunctionTreeNode<Node>> jt = jtAndRoot.junctionTree;
             if (logger.getEffectiveLevel() == Level.DEBUG)
-                Misc.saveGraphOnDisk("jtree_" + Misc.asSortedList(graph.getNodes()) + ".html", jt);
+                Misc.saveGraphOnDisk("jtree_" + Misc.asSortedList(graph.getNodes()), jt);
 
 
             DirectedGraph<Node> subGraph = bayesianNetwork.getSubGraph(graph.getNodes());
@@ -340,7 +340,7 @@ public class LQGInfluenceDiagram {
                     newPChance = pChance.maxProject(projectionNodes, pChance.multiply(pUtility)).getPotential();
                     newPUtility = pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(newPChance);
                     logger.info("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
-                    logger.debug("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
+                    logger.info("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
                 } else {
                     throw new UnsupportedOperationException("Cannot eliminate a utility node.");
                 }

@@ -49,7 +49,10 @@ public class Misc {
 
     public static void saveGraphOnDisk(String filename, String title, AbstractGraph g) {
         try {
-            PrintWriter writer = new PrintWriter(filename, "UTF-8");
+            if (filename.length() > 40) {
+                filename = filename.substring(0, 37) + "...";
+            }
+            PrintWriter writer = new PrintWriter(filename + ".html", "UTF-8");
             writer.println(g.generateVisualizationHtml(title));
             writer.close();
         } catch (Exception e1) {
@@ -151,6 +154,119 @@ public class Misc {
         writer.format("error = sqrt(error)").println();
 
         writer.close();
+    }
+    public static void writeHuginNet(String filename, DirectedGraph<Node> bn, List<Node> nodes) {
+        int N = nodes.size();
+        PrintWriter writer = null;
+        try {
+            writer = new PrintWriter(filename);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        writer.println("net {");
+        writer.println("  node_size = (40 40);");
+        for (Node node1 : nodes) {
+            writer.format("  HR_realname_n%s = \"%s\";", node1.getLabel(), node1.getLabel()).println();
+        }
+        writer.println("}");
+        Random random = new Random();
+
+        for (Node node : nodes) {
+            String type;
+            if (node.getCategory() == Node.Category.Chance)
+                type = "node";
+            else if (node.getCategory() == Node.Category.Decision)
+                type = "decision";
+            else
+                type = "utility";
+            writer.format("%s n%s {", type, node.getLabel()).println();
+            writer.println("  HR_Group = \"0\";");
+            writer.format("  label = \"%s\";", node.getLabel()).println();
+            writer.format("  position = (%d %d);", random.nextInt(400), random.nextInt(400)).println();
+            if (node.getCategory() != Node.Category.Utility) {
+                writer.println("  states = (");
+                for (String state : node.getStates())
+                    writer.format("  \"%s\"", state);
+                writer.println("  );");
+            }
+            if (bn.getChildren(node).size()>0) {
+                writer.print("  HR_LinkGroup = \"");
+                for (Node child : bn.getChildren(node))
+                    writer.format("[n%s:0]", child.getLabel());
+                writer.println("\";");
+                writer.print("  HR_LinkMode = \"");
+                for (Node child : bn.getChildren(node))
+                    writer.format("[n%s:0]", child.getLabel());
+                writer.println("\";");
+            }
+
+            writer.println("}");
+        }
+
+        for (Node node : nodes) {
+            writer.print("potential (");
+            writer.format("n%s", node.getLabel());
+            if (!bn.getParents(node).isEmpty()) {
+                writer.print(" | ");
+                for (Node parent : bn.getParents(node))
+                    writer.format("n%s ", parent.getLabel());
+            }
+            writer.println(") {");
+            Potential p = null;
+            if (node.getCategory() == Node.Category.Chance) {
+                p = new Potential((LinkedHashSet<Node>) bn.getFamily(node), node.getPotential());
+                Set<Node> reorderedVariables = new LinkedHashSet<Node>();
+                reorderedVariables.add(node);
+                for (Node parent : bn.getParents(node))
+                    reorderedVariables.add(parent);
+                p = p.project(reorderedVariables);
+            }
+            else if (node.getCategory() == Node.Category.Utility)
+                p = new Potential((LinkedHashSet<Node>) bn.getParents(node), node.getPotential());
+
+            if (p != null) {
+                writer.println("  data = ");
+                List<Double> dataList = new ArrayList<Double>();
+                for (int i = 0; i < p.getData().length; i++) {
+                    dataList.add(p.getData()[i]);
+                }
+                writer.print(getPotentialDataString(p, node.getCategory(), p.getVariables().size() - 1, dataList.iterator()));
+                writer.println(";");
+            }
+            writer.println("}");
+
+        }
+
+        writer.close();
+    }
+
+    private static String getPotentialDataString(Potential potential,
+                                                 Node.Category category, int variableIndex,
+                                                 Iterator<Double> dataIterator) {
+        StringBuilder sb = new StringBuilder();
+
+        if (variableIndex == 0) {
+            Node variable = potential.getVariables().iterator().next();
+            sb.append("(");
+            for (int i = 0; i < variable.getStates().length ; i++) {
+                sb.append(dataIterator.next().toString()).append(" ");
+            }
+            sb.append(")");
+        } else {
+            sb.append("(");
+            Iterator<Node> variableIterator = potential.getVariables().iterator();
+            Node nextVariable = null;
+            for (int i = 0; i <= variableIndex; i++) {
+                nextVariable = variableIterator.next();
+            }
+
+            for (int i = 0; i < nextVariable.getStates().length; i++) {
+                sb.append(getPotentialDataString(potential,category,variableIndex-1,dataIterator));
+            }
+            sb.append(")");
+
+        }
+        return sb.toString();
     }
 
 

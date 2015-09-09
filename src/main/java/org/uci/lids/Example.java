@@ -5,60 +5,165 @@ import org.apache.log4j.Logger;
 import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.utils.Misc;
 
+import java.util.*;
+
 
 public class Example {
-
-    final static Logger logger = Logger.getLogger(Example.class);
+    final static Logger logger = Logger.getLogger(LQGInfluenceDiagram.class);
 
     public static void main(String[] args) {
+        List<Node> nodes = new ArrayList<Node>();
+        int N = 12;
+        final int NO_STATES = 3;
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
 
-        Node A = new Node(Node.VariableType.Categorical, Node.Category.Chance, "A");
-        Node B = new Node(Node.VariableType.Categorical, Node.Category.Chance, "B");
-        Node C = new Node(Node.VariableType.Categorical, Node.Category.Chance, "C");
-        Node T = new Node(Node.VariableType.Categorical, Node.Category.Chance, "T");
-        Node D1 = new Node(Node.VariableType.Categorical, Node.Category.Decision, "D1");
-        Node D2 = new Node(Node.VariableType.Categorical, Node.Category.Decision, "D2");
-        Node V1 = new Node(Node.VariableType.Categorical, Node.Category.Utility, "V1");
-        Node V2 = new Node(Node.VariableType.Categorical, Node.Category.Utility, "V2");
+        Random r = new Random(30);
+        for (int i = 0; i < N; i++) {
+            double randDouble = r.nextDouble();
+            Node node;
+            if (randDouble < 2d / 3)
+                node = createNode(Node.Category.Chance, NO_STATES, i);
+            else if (randDouble < 5d / 6)
+                node = createNode(Node.Category.Decision, NO_STATES, i);
+            else
+                node = createNode(Node.Category.Utility, NO_STATES, i);
+            nodes.add(node);
+            bn.addNode(node);
+        }
 
-        A.setStates(new String[]{"Y", "N"});
-        B.setStates(new String[]{"Y", "N"});
-        C.setStates(new String[]{"Y", "N"});
-        T.setStates(new String[]{"Y", "N"});
-        D1.setStates(new String[]{"D1_1", "D1_2"});
-        D2.setStates(new String[]{"D2_1", "D2_2"});
+        for (int i = 0; i < N; i++) {
+            for (int j = i + 1; j < N; j++) {
+                if (nodes.get(i).getCategory() != Node.Category.Utility)
+                    bn.addLink(nodes.get(i), nodes.get(j));
+            }
+        }
+        for (int k = 0; k < 2 * (N * N); k++) {
+            int i = r.nextInt(N);
+            int j = r.nextInt(N);
+            bn.removeLink(nodes.get(i), nodes.get(j));
+        }
 
-        A.setPotential(new double[]{0.2, 0.8, 0.8, 0.2});
-        B.setPotential(new double[]{0.8, 0.2, 0.2, 0.8});
-        C.setPotential(new double[]{0.9, 0.5, 0.5, 0.9, 0.1, 0.5, 0.5, 0.1});
-        T.setPotential(new double[]{0.9, 0.5, 0.5, 0.1, 0.1, 0.5, 0.5, 0.9});
-        V1.setPotential(new double[]{3, 0, 0, 2});
-        V2.setPotential(new double[]{10, 0});
 
-        bn.addNode(A);
-        bn.addNode(B);
-        bn.addNode(C);
-        bn.addNode(T);
-        bn.addNode(D1);
-        bn.addNode(D2);
-        bn.addNode(V1);
-        bn.addNode(V2);
+        Node prevNode = null;
+        LinkedList<Node> topologicalOrderedNodes = bn.getTopologicalOrderedNodes();
+        for (Node node : topologicalOrderedNodes)
+            if (node.getCategory() == Node.Category.Decision) {
+                if (prevNode != null)
+                    bn.addLink(prevNode, node);
+                prevNode = node;
 
-        bn.addLink(D1, A);
-        bn.addLink(A, B);
-        bn.addLink(B, C);
-        bn.addLink(D2, C);
-        bn.addLink(B, T);
-        bn.addLink(A, T);
-        bn.addLink(A, V1);
-        bn.addLink(D2, V1);
-        bn.addLink(C, V2);
-        bn.addLink(T, D2);
+                boolean hasChanceChildren = false;
+                for (Node child : bn.getChildren(node))
+                    if (child.getCategory() == Node.Category.Chance) {
+                        hasChanceChildren = true;
+                        break;
+                    }
+                if (!hasChanceChildren)
+                    for (int i = topologicalOrderedNodes.indexOf(node) + 1; i < topologicalOrderedNodes.size(); i++) {
+                        if (topologicalOrderedNodes.get(i).getCategory() == Node.Category.Chance) {
+                            bn.addLink(node, topologicalOrderedNodes.get(i));
+                            hasChanceChildren = true;
+                            break;
+                        }
+                    }
+                if (!hasChanceChildren) {
+                    Node newNode = createNode(Node.Category.Chance, NO_STATES, N++);
+                    nodes.add(newNode);
+                    bn.addNode(newNode);
+                    bn.addLink(node, newNode);
+                }
+            }
 
-       if (logger.getEffectiveLevel() == Level.DEBUG)
-            Misc.saveGraphOnDisk("graph.html", bn);
+        List<DirectedGraph<Node>> connectedComponents = bn.getConnectedComponents();
+        List<Node> connectingNodes = new ArrayList<Node>();
+        for (DirectedGraph<Node> graph : connectedComponents) {
+            boolean foundNonUtilityNode = false;
+            for (Node node : graph.getNodes())
+                if (node.getCategory() != Node.Category.Utility) {
+                    connectingNodes.add(node);
+                    foundNonUtilityNode = true;
+                    break;
+                }
+            if (!foundNonUtilityNode) {
+                bn.removeSubGraph(graph);
+                nodes.removeAll(graph.getNodes());
+            }
+
+        }
+
+        for (int i = 0; i < connectingNodes.size() - 1; i++) {
+            bn.addLink(connectingNodes.get(i), connectingNodes.get(i + 1));
+        }
+
+        for (int i = 0; i < nodes.size(); i++) {
+            Set<Node> parents = bn.getParents(nodes.get(i));
+            if (nodes.get(i).getCategory() == Node.Category.Chance) {
+                int size = (int) Math.round(Math.pow(NO_STATES, parents.size() + 1));
+                double[] potential = new double[size];
+                for (int j = 0; j < size; j++) {
+                    potential[j] = r.nextDouble();
+                }
+
+                for (int k = 0; k < size / NO_STATES; k++) {
+                    double sum = 0;
+                    for (int j = k; j < size; j += size / NO_STATES) {
+                        sum += potential[j];
+                    }
+                    for (int j = k; j < size; j += size / NO_STATES) {
+                        potential[j] /= sum;
+                    }
+                }
+                nodes.get(i).setPotential(potential);
+            } else if (nodes.get(i).getCategory() == Node.Category.Utility) {
+                int size = (int) Math.round(Math.pow(NO_STATES, parents.size()));
+                double[] potential = new double[size];
+                for (int j = 0; j < size; j++) {
+                    potential[j] = r.nextDouble();
+                }
+                nodes.get(i).setPotential(potential);
+            }
+
+        }
+
+        if (logger.getEffectiveLevel() == Level.DEBUG) {
+            Misc.saveGraphOnDisk("graph", bn);
+            Misc.writeHuginNet("hugin.net", bn, nodes);
+        }
+        for (Node node : nodes) {
+            String[] a;
+            if (node.getPotential() != null) {
+                a = new String[node.getPotential().length];
+                int i = 0;
+                for (double v : node.getPotential())
+                    a[i++] = String.format("%.3f", v);
+            } else
+                a = null;
+            logger.debug(node.toString() + "'s Pot. : " + Arrays.toString(a));
+        }
+
         LQGInfluenceDiagram lid = new LQGInfluenceDiagram(bn);
         lid.getOptimalStrategy();
+    }
+
+    private static Node createNode(Node.Category category, int NO_STATES, int i) {
+        Node node;
+        node = new Node(Node.VariableType.Categorical, category, Integer.toString(i));
+
+
+        String[] sa;
+        if (category == Node.Category.Utility) {
+            sa = new String[1];
+            for (int j = 0; j < 1; j++) {
+                sa[j] = Integer.toString(j);
+            }
+        } else {
+            sa = new String[NO_STATES];
+            for (int j = 0; j < NO_STATES; j++) {
+                sa[j] = Integer.toString(j);
+            }
+
+        }
+        node.setStates(sa);
+        return node;
     }
 }
