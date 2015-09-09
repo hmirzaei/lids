@@ -125,10 +125,10 @@ public class Example {
 
         }
 
-        if (logger.getEffectiveLevel() == Level.DEBUG) {
-            Misc.saveGraphOnDisk("graph", bn);
-            Misc.writeHuginNet("hugin.net", bn, nodes);
-        }
+
+        Misc.saveGraphOnDisk("graph", bn);
+        Misc.writeHuginNet("hugin.net", bn, nodes);
+
         for (Node node : nodes) {
             String[] a;
             if (node.getPotential() != null) {
