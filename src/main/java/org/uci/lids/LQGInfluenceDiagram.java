@@ -21,6 +21,40 @@ public class LQGInfluenceDiagram {
         this.bayesianNetwork = bayesianNetwork;
     }
 
+    public static List<Set<Node>> getTemporalOrder(DirectedGraph<Node> bayesianNetwork) {
+        List<Set<Node>> temporalOrder = new ArrayList<Set<Node>>();
+        LinkedList<Node> topologicalOrderedNodes = bayesianNetwork.getTopologicalOrderedNodes();
+
+        Set<Node> lastNodes = new HashSet<Node>();
+        temporalOrder.add(new HashSet<Node>());
+
+        for (Node n : topologicalOrderedNodes) {
+            if (n.getCategory() == Node.Category.Chance)
+                lastNodes.add(n);
+        }
+
+
+        for (Node n : topologicalOrderedNodes) {
+            if (n.getCategory() == Node.Category.Decision) {
+                boolean hasChanceParent = false;
+                for (Node parent : bayesianNetwork.getParents(n)) {
+                    if (parent.getCategory() == Node.Category.Chance) {
+                        if (lastNodes.contains(parent)) {
+                            lastNodes.remove(parent);
+                            temporalOrder.get(temporalOrder.size() - 1).add(parent);
+                            hasChanceParent = true;
+                        }
+                    }
+                }
+                if (hasChanceParent) temporalOrder.add(new HashSet<Node>());
+                temporalOrder.get(temporalOrder.size() - 1).add(n);
+                temporalOrder.add(new HashSet<Node>());
+            }
+        }
+        temporalOrder.set(temporalOrder.size() - 1, lastNodes);
+        return temporalOrder;
+    }
+
     private void updateNodePotentials(Map<Node, Integer> evidences) {
         nodePotentialMap = new HashMap<Node, Potential>();
         for (Node n : bayesianNetwork.getNodes()) {
@@ -55,24 +89,39 @@ public class LQGInfluenceDiagram {
     }
 
     private void getConnectedComponent‌OptimalStrategy(DirectedGraph<Node> bayesianNetwork, Map<Node, Potential> strategy) {
-
-        List<Set<Node>> temporalOrder = getTemporalOrder(bayesianNetwork);
-        Map<Node, Integer> temporalGroupNumbers = new HashMap<Node, Integer>();
-        int groupNumber = 0;
-        for (Set<Node> group : temporalOrder) {
-            for (Node n : group)
-                temporalGroupNumbers.put(n, groupNumber);
-            groupNumber++;
-        }
-
-        logger.debug("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
         UndirectedGraph<Node> moralized = getMoralizedInfluenceDiagram(bayesianNetwork);
+        List<Set<Node>> wholeNetworkTemporalOrder = getTemporalOrder(bayesianNetwork);
+
         if (logger.getEffectiveLevel() == Level.DEBUG)
             Misc.saveGraphOnDisk("moralized_" + Misc.asSortedList(bayesianNetwork.getNodes()).toString(), moralized);
 
         List<UndirectedGraph<Node>> connectedComponents = moralized.getConnectedComponents();
 
         for (UndirectedGraph<Node> graph : connectedComponents) {
+            List<Node> orderedDecisionNodes = new ArrayList<Node>();
+            for (Set<Node> nodeSet : wholeNetworkTemporalOrder) {
+                if (!nodeSet.isEmpty()) {
+                    Node dn = nodeSet.iterator().next();
+                    if (dn.getCategory() == Node.Category.Decision)
+                        if (graph.getNodes().contains(dn))
+                            orderedDecisionNodes.add(dn);
+                }
+            }
+            DirectedGraph<Node> directedGraph = bayesianNetwork.getSubGraph(graph.getNodes());
+            for (int i = 0; i < orderedDecisionNodes.size() - 1; i++) {
+                directedGraph.addLink(orderedDecisionNodes.get(i), orderedDecisionNodes.get(i + 1));
+            }
+
+            List<Set<Node>> temporalOrder = getTemporalOrder(directedGraph);
+            Map<Node, Integer> temporalGroupNumbers = new HashMap<Node, Integer>();
+            int groupNumber = 0;
+            for (Set<Node> group : temporalOrder) {
+                for (Node n : group)
+                    temporalGroupNumbers.put(n, groupNumber);
+                groupNumber++;
+            }
+
+            logger.debug("temporalOrder = \n" + temporalOrder.toString().replace(']', '\n'));
             graph.triangulate(temporalOrder);
             if (logger.getEffectiveLevel() == Level.DEBUG)
                 Misc.saveGraphOnDisk("triangulated_" + Misc.asSortedList(graph.getNodes()), graph);
@@ -97,52 +146,24 @@ public class LQGInfluenceDiagram {
         }
     }
 
-
     private UndirectedGraph<Node> getMoralizedInfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
-        List<Edge<Node>> edges = bayesianNetwork.getEdgeList();
-        for (Edge<Node> e : edges)
-            if (e.getNode2().getCategory() == Node.Category.Decision)
-                bayesianNetwork.removeLink(e.getNode1(), e.getNode2());
 
-        UndirectedGraph<Node> moralized = bayesianNetwork.getMoralizedUndirectedCopy();
-        for (Node n : bayesianNetwork.getNodes())
-            if (n.getCategory() == Node.Category.Utility)
-                moralized.removeNode(n);
-        return moralized;
-    }
+        try {
+            DirectedGraph<Node> bn = bayesianNetwork.clone();
+            List<Edge<Node>> edges = bn.getEdgeList();
+            for (Edge<Node> e : edges)
+                if (e.getNode2().getCategory() == Node.Category.Decision)
+                    bn.removeLink(e.getNode1(), e.getNode2());
 
-    private List<Set<Node>> getTemporalOrder(DirectedGraph<Node> bayesianNetwork) {
-        List<Set<Node>> temporalOrder = new ArrayList<Set<Node>>();
-        LinkedList<Node> topologicalOrderedNodes = bayesianNetwork.getTopologicalOrderedNodes();
-
-        Set<Node> lastNodes = new HashSet<Node>();
-        temporalOrder.add(new HashSet<Node>());
-
-        for (Node n : topologicalOrderedNodes) {
-            if (n.getCategory() == Node.Category.Chance)
-                lastNodes.add(n);
+            UndirectedGraph<Node> moralized = bn.getMoralizedUndirectedCopy();
+            for (Node n : bn.getNodes())
+                if (n.getCategory() == Node.Category.Utility)
+                    moralized.removeNode(n);
+            return moralized;
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+            return null;
         }
-
-
-        for (Node n : topologicalOrderedNodes) {
-            if (n.getCategory() == Node.Category.Decision) {
-                boolean hasChanceParent = false;
-                for (Node parent : bayesianNetwork.getParents(n)) {
-                    if (parent.getCategory() == Node.Category.Chance) {
-                        if (lastNodes.contains(parent)) {
-                            lastNodes.remove(parent);
-                            temporalOrder.get(temporalOrder.size() - 1).add(parent);
-                            hasChanceParent = true;
-                        }
-                    }
-                }
-                if (hasChanceParent) temporalOrder.add(new HashSet<Node>());
-                temporalOrder.get(temporalOrder.size() - 1).add(n);
-                temporalOrder.add(new HashSet<Node>());
-            }
-        }
-        temporalOrder.set(temporalOrder.size() - 1, lastNodes);
-        return temporalOrder;
     }
 
     public Potential getNodePotential(Node node) {

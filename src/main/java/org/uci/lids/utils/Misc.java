@@ -155,6 +155,7 @@ public class Misc {
 
         writer.close();
     }
+
     public static void writeHuginNet(String filename, DirectedGraph<Node> bn, List<Node> nodes) {
         int N = nodes.size();
         PrintWriter writer = null;
@@ -189,7 +190,7 @@ public class Misc {
                     writer.format("  \"%s\"", state);
                 writer.println("  );");
             }
-            if (bn.getChildren(node).size()>0) {
+            if (bn.getChildren(node).size() > 0) {
                 writer.print("  HR_LinkGroup = \"");
                 for (Node child : bn.getChildren(node))
                     writer.format("[n%s:0]", child.getLabel());
@@ -217,12 +218,20 @@ public class Misc {
                 p = new Potential((LinkedHashSet<Node>) bn.getFamily(node), node.getPotential());
                 Set<Node> reorderedVariables = new LinkedHashSet<Node>();
                 reorderedVariables.add(node);
-                for (Node parent : bn.getParents(node))
+                ArrayList<Node> parents = new ArrayList<Node>(bn.getParents(node));
+                Collections.reverse(parents);
+                for (Node parent : parents)
+                    reorderedVariables.add(parent);
+                p = p.project(reorderedVariables);
+            } else if (node.getCategory() == Node.Category.Utility) {
+                p = new Potential((LinkedHashSet<Node>) bn.getParents(node), node.getPotential());
+                Set<Node> reorderedVariables = new LinkedHashSet<Node>();
+                ArrayList<Node> parents = new ArrayList<Node>(bn.getParents(node));
+                Collections.reverse(parents);
+                for (Node parent : parents)
                     reorderedVariables.add(parent);
                 p = p.project(reorderedVariables);
             }
-            else if (node.getCategory() == Node.Category.Utility)
-                p = new Potential((LinkedHashSet<Node>) bn.getParents(node), node.getPotential());
 
             if (p != null) {
                 writer.println("  data = ");
@@ -248,7 +257,7 @@ public class Misc {
         if (variableIndex == 0) {
             Node variable = potential.getVariables().iterator().next();
             sb.append("(");
-            for (int i = 0; i < variable.getStates().length ; i++) {
+            for (int i = 0; i < variable.getStates().length; i++) {
                 sb.append(dataIterator.next().toString()).append(" ");
             }
             sb.append(")");
@@ -260,8 +269,9 @@ public class Misc {
                 nextVariable = variableIterator.next();
             }
 
+            assert nextVariable != null;
             for (int i = 0; i < nextVariable.getStates().length; i++) {
-                sb.append(getPotentialDataString(potential,category,variableIndex-1,dataIterator));
+                sb.append(getPotentialDataString(potential, category, variableIndex - 1, dataIterator));
             }
             sb.append(")");
 

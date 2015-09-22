@@ -49,10 +49,12 @@ public class DirectedGraph<E> extends AbstractGraph<E, DirectedVertex<E>> {
 
     @Override
     public void removeNode(E node) {
-        for (E child : vertices.get(node).getChildren())
+        Set<E> children = new HashSet<E>(vertices.get(node).getChildren());
+        for (E child : children)
             vertices.get(node).removeLinkTo(vertices.get(child));
 
-        for (E parent : vertices.get(node).getParents())
+        Set<E> parents = new HashSet<E>(vertices.get(node).getParents());
+        for (E parent : parents)
             vertices.get(parent).removeLinkTo(vertices.get(node));
 
         this.vertices.remove(node);

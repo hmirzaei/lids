@@ -1,6 +1,5 @@
 package org.uci.lids;
 
-import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.utils.Misc;
@@ -13,8 +12,8 @@ public class Example {
 
     public static void main(String[] args) {
         List<Node> nodes = new ArrayList<Node>();
-        int N = 12;
-        final int NO_STATES = 3;
+        int N = 25;
+        final int NO_STATES = 2;
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
 
         Random r = new Random(30);
@@ -37,7 +36,7 @@ public class Example {
                     bn.addLink(nodes.get(i), nodes.get(j));
             }
         }
-        for (int k = 0; k < 2 * (N * N); k++) {
+        for (int k = 0; k < .8 * (N * N); k++) {
             int i = r.nextInt(N);
             int j = r.nextInt(N);
             bn.removeLink(nodes.get(i), nodes.get(j));
@@ -95,6 +94,27 @@ public class Example {
             bn.addLink(connectingNodes.get(i), connectingNodes.get(i + 1));
         }
 
+//        Integer[] nodesToRemove = new Integer[]{24, 22, 21, 20, 19, 18, 17, 14, 9, 6, 3};
+//        Arrays.sort(nodesToRemove, Collections.reverseOrder());
+//        for (int i : nodesToRemove)
+//            bn.removeNode(nodes.get(i));
+//
+//        for (int i: nodesToRemove)
+//            nodes.remove(i);
+
+        List<Set<Node>> wholeNetworkTemporalOrder = LQGInfluenceDiagram.getTemporalOrder(bn);
+        for (int i = 1; i < wholeNetworkTemporalOrder.size(); i++) {
+            if (!wholeNetworkTemporalOrder.get(i).isEmpty()) {
+                Node dn = wholeNetworkTemporalOrder.get(i).iterator().next();
+                if (dn.getCategory() == Node.Category.Decision) {
+                    for (Set<Node> nodeSet2 : wholeNetworkTemporalOrder.subList(0, i - 1)) {
+                        for (Node n : nodeSet2)
+                            bn.addLink(n, dn);
+                    }
+                }
+            }
+        }
+
         for (int i = 0; i < nodes.size(); i++) {
             Set<Node> parents = bn.getParents(nodes.get(i));
             if (nodes.get(i).getCategory() == Node.Category.Chance) {
@@ -138,6 +158,7 @@ public class Example {
                     a[i++] = String.format("%.3f", v);
             } else
                 a = null;
+            logger.debug("bn.getParents(node) = " + bn.getParents(node));
             logger.debug(node.toString() + "'s Pot. : " + Arrays.toString(a));
         }
 
