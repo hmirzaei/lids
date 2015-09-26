@@ -342,6 +342,8 @@ public class LQGInfluenceDiagram {
                         } else {
                             throw new UnsupportedOperationException("Cannot eliminate a utility node.");
                         }
+                        logger.debug("newPChance" + newPChance);
+                        logger.debug("newPUtility" + newPUtility);
                         pChance = newPChance;
                         pUtility = newPUtility;
 
@@ -365,6 +367,8 @@ public class LQGInfluenceDiagram {
                 } else {
                     throw new UnsupportedOperationException("Cannot eliminate a utility node.");
                 }
+                logger.debug("newPChance" + newPChance);
+                logger.debug("newPUtility" + newPUtility);
                 pChance = newPChance;
                 pUtility = newPUtility;
 

@@ -10,16 +10,19 @@ import java.util.*;
 public class Potential {
 
     private LinkedHashSet<Node> variables;
-    private double[] data;
+    private ZeroConsciousDouble[] data;
 
     public Potential(LinkedHashSet<Node> variables, double[] data) {
         this.variables = variables;
-        this.data = data;
+        this.data = ZeroConsciousDouble.fromDoubleArray(data);
     }
 
     public Potential(LinkedHashSet<Node> variables) {
         this.variables = variables;
-        this.data = new double[getTotalSize()];
+        this.data = new ZeroConsciousDouble[getTotalSize()];
+        for (int i = 0; i < this.data.length; i++) {
+            this.data[i] = new ZeroConsciousDouble(0);
+        }
     }
 
     public static Potential multiply(Set<Potential> potentialSet) {
@@ -51,7 +54,7 @@ public class Potential {
         LinkedHashSet<Node> nodeSet = new LinkedHashSet<Node>(nodes);
         Potential result = new Potential(nodeSet);
         for (int i = 0; i < result.data.length; i++) {
-            result.data[i] = 1;
+            result.data[i] = new ZeroConsciousDouble(1);
         }
         return result;
     }
@@ -66,7 +69,7 @@ public class Potential {
     }
 
     public double[] getData() {
-        return data;
+        return ZeroConsciousDouble.toDoubleArray(this.data);
     }
 
     public Potential multiply(Potential p) {
@@ -97,7 +100,7 @@ public class Potential {
                 thisInd.add(ind.get(j));
             for (int j : pBits)
                 pInd.add(ind.get(j));
-            result.data[i] = this.data[this.getPotPosition(thisInd)] * p.data[p.getPotPosition(pInd)];
+            result.data[i] = this.data[this.getPotPosition(thisInd)].multiply(p.data[p.getPotPosition(pInd)]);
         }
 
         return result;
@@ -131,7 +134,7 @@ public class Potential {
                 thisInd.add(ind.get(j));
             for (int j : pBits)
                 pInd.add(ind.get(j));
-            result.data[i] = this.data[this.getPotPosition(thisInd)] + p.data[p.getPotPosition(pInd)];
+            result.data[i] = this.data[this.getPotPosition(thisInd)].add(p.data[p.getPotPosition(pInd)]);
         }
 
         return result;
@@ -165,14 +168,14 @@ public class Potential {
                 thisInd.add(ind.get(j));
             for (int j : pBits)
                 pInd.add(ind.get(j));
-            result.data[i] = this.data[this.getPotPosition(thisInd)] / p.data[p.getPotPosition(pInd)];
+            result.data[i] = this.data[this.getPotPosition(thisInd)].divide(p.data[p.getPotPosition(pInd)]);
         }
 
         return result;
     }
 
     public void applyEvidence(Node variable, int state) {
-        double[] data = new double[this.getTotalSize()];
+        ZeroConsciousDouble[] data = new ZeroConsciousDouble[this.getTotalSize()];
 
         Set<Node> variables = new LinkedHashSet<Node>(this.variables);
         variables.remove(variable);
@@ -188,8 +191,6 @@ public class Potential {
     }
 
     public void normalize(Node variable) {
-        double[] data = new double[this.getTotalSize()];
-
         LinkedHashSet<Node> variables = new LinkedHashSet<Node>(this.variables);
         variables.remove(variable);
         Potential tmp = new Potential(variables);
@@ -198,12 +199,12 @@ public class Potential {
         for (int i = 0; i < this.getTotalSize(); i++) {
             List<Integer> index = this.getIndex(i);
             index.remove(varIndex);
-            tmp.getData()[tmp.getPotPosition(index)] += this.data[i];
+            tmp.data[tmp.getPotPosition(index)] = tmp.data[tmp.getPotPosition(index)].add(this.data[i]);
         }
         for (int i = 0; i < this.getTotalSize(); i++) {
             List<Integer> index = this.getIndex(i);
             index.remove(varIndex);
-            this.data[i] /= tmp.getData()[tmp.getPotPosition(index)];
+            this.data[i] = this.data[i].divide(tmp.data[tmp.getPotPosition(index)]);
         }
     }
 
@@ -222,7 +223,7 @@ public class Potential {
         }
 
         for (int i = 0; i < result.data.length; i++) {
-            result.data[i] = 0;
+            result.data[i] = new ZeroConsciousDouble(0);
         }
 
         for (int i = 0; i < this.getTotalSize(); i++) {
@@ -231,7 +232,7 @@ public class Potential {
             for (int j : projectionBits)
                 projectionInd.add(ind.get(j));
 
-            result.data[result.getPotPosition(projectionInd)] += this.data[this.getPotPosition(ind)];
+            result.data[result.getPotPosition(projectionInd)] = result.data[result.getPotPosition(projectionInd)].add(this.data[this.getPotPosition(ind)]);
 
         }
         return result;
@@ -271,7 +272,7 @@ public class Potential {
         }
 
         for (int i = 0; i < maxPotential.data.length; i++) {
-            maxPotential.data[i] = Double.MIN_VALUE;
+            maxPotential.data[i] = new ZeroConsciousDouble(Double.MIN_VALUE);
         }
 
         for (int i = 0; i < this.getTotalSize(); i++) {
@@ -283,13 +284,13 @@ public class Potential {
             for (int j : eliminatedBits)
                 eliminatedInd.add(ind.get(j));
 
-            if (objectivePotential.data[this.getPotPosition(ind)] > maxPotential.data[maxPotential.getPotPosition(projectionInd)]) {
+            if (objectivePotential.data[this.getPotPosition(ind)].toDouble() > maxPotential.data[maxPotential.getPotPosition(projectionInd)].toDouble()) {
                 maxPotential.data[maxPotential.getPotPosition(projectionInd)] = objectivePotential.data[this.getPotPosition(ind)];
                 projPotential.data[maxPotential.getPotPosition(projectionInd)] = this.data[this.getPotPosition(ind)];
                 int c = 0;
                 for (Node n : eliminatedVariables) {
                     Potential pot = maxStates.get(n);
-                    pot.data[pot.getPotPosition(projectionInd)] = ind.get(eliminatedBits[c]);
+                    pot.data[pot.getPotPosition(projectionInd)] = new ZeroConsciousDouble(ind.get(eliminatedBits[c]));
                     c++;
                 }
             }
@@ -352,7 +353,7 @@ public class Potential {
                 sb.append(prefix).append(varStr[j++]).append(":'").append(it.next().getStates()[ind]).append("'");
                 prefix = ",  ";
             }
-            sb.append(") -> ").append(String.format("%.3f", data[i]));
+            sb.append(") -> ").append(String.format("%.3f", data[i].toDouble()));
         }
         sb.append("}\n");
         return sb.toString();
