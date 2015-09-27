@@ -272,7 +272,7 @@ public class Potential {
         }
 
         for (int i = 0; i < maxPotential.data.length; i++) {
-            maxPotential.data[i] = new ZeroConsciousDouble(Double.MIN_VALUE);
+            maxPotential.data[i] = new ZeroConsciousDouble(Double.NEGATIVE_INFINITY);
         }
 
         for (int i = 0; i < this.getTotalSize(); i++) {

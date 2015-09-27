@@ -5,40 +5,53 @@ package org.uci.lids.utils;
  */
 public class ZeroConsciousDouble {
     private double a;
-    private int i;
+    private boolean i;
 
     public ZeroConsciousDouble(double value) {
         if (value == 0) {
-            a = 0;
-            i = 0;
+            a = 1;
+            i = true;
         } else {
             a = value;
-            i = 0;
+            i = false;
         }
     }
 
     public double toDouble() {
-        if (i == 1)
+        if (i)
             return 0;
         else
             return a;
     }
 
-    public ZeroConsciousDouble(double a, int i) {
+    public ZeroConsciousDouble(double a, boolean i) {
         this.a = a;
         this.i = i;
     }
 
     public ZeroConsciousDouble add(ZeroConsciousDouble z2) {
-        return new ZeroConsciousDouble(a + z2.a, 0);
+        if (!i && z2.i)
+            return new ZeroConsciousDouble(a, false);
+        else if  (i && !z2.i)
+            return new ZeroConsciousDouble(z2.a, false);
+        else
+            return new ZeroConsciousDouble(a + z2.a, i);
     }
 
     public ZeroConsciousDouble multiply(ZeroConsciousDouble z2) {
-        return new ZeroConsciousDouble(a * z2.a, 0);
+        if (!i && z2.toDouble()==0)
+            return new ZeroConsciousDouble(a, true);
+        else
+            return new ZeroConsciousDouble(z2.toDouble() * a, i);
     }
 
     public ZeroConsciousDouble divide(ZeroConsciousDouble z2) {
-        return new ZeroConsciousDouble(a / z2.a, 0);
+        if (!i)
+            return new ZeroConsciousDouble(a/z2.toDouble(), i);
+        else if (i && z2.toDouble() != 0)
+            return new ZeroConsciousDouble(1, true);
+        else
+            return new ZeroConsciousDouble(a, false);
     }
 
     public static ZeroConsciousDouble[] fromDoubleArray(double[] da) {
