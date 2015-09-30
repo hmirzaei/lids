@@ -2,9 +2,11 @@ package org.uci.lids;
 
 import org.apache.log4j.Logger;
 import org.uci.lids.graph.DirectedGraph;
-import org.uci.lids.utils.Misc;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.Set;
 
 
 public class Example {
@@ -12,68 +14,91 @@ public class Example {
 
     public static void main(String[] args) {
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
+        final int N = 100;
+        final int NO_STATES = 30;
+        List<Node> nodes = new ArrayList<Node>();
 
-        Node S = new Node(Node.VariableType.Categorical, Node.Category.Chance, "S");
-        Node T = new Node(Node.VariableType.Categorical, Node.Category.Chance, "T");
-        Node Tp = new Node(Node.VariableType.Categorical, Node.Category.Chance, "Tp");
-        Node Test = new Node(Node.VariableType.Categorical, Node.Category.Decision, "Test");
-        Node Drill = new Node(Node.VariableType.Categorical, Node.Category.Decision, "Drill");
-        Node Cost = new Node(Node.VariableType.Categorical, Node.Category.Utility, "Cost");
-        Node Util = new Node(Node.VariableType.Categorical, Node.Category.Utility, "Util");
-
-        S.setStates(new String[]{"Dry", "Wet", "Soaked"});
-        T.setStates(new String[]{"Closed", "Open", "Diffuse"});
-        Tp.setStates(new String[]{"Closed", "Open", "Diffuse","NoTest"});
-        Test.setStates(new String[]{"Test", "NoTest"});
-        Drill.setStates(new String[]{"Drill", "NoDrill"});
-
-        S.setPotential(new double[]{0.5, 0.3, 0.2});
-        T.setPotential(new double[]{
-                0.1, 0.3, 0.5,
-                0.3, 0.4, 0.4,
-                0.6, 0.3, 0.1});
-        Tp.setPotential(new double[]{
-                1, 0, 0, 0, 0, 0,
-                0, 1, 0, 0, 0, 0,
-                0, 0, 1, 0, 0, 0,
-                0, 0, 0, 1, 1, 1});
-        Cost.setPotential(new double[]{-10, 0});
-        Util.setPotential(new double[]{-70, 50, 200, 0, 0, 0});
-
-        bn.addNode(S);
-        bn.addNode(T);
-        bn.addNode(Tp);
-        bn.addNode(Test);
-        bn.addNode(Drill);
-        bn.addNode(Cost);
-        bn.addNode(Util);
-
-        bn.addLink(S, Util);
-        bn.addLink(Drill, Util);
-        bn.addLink(S, T);
-        bn.addLink(T, Tp);
-        bn.addLink(Test, Tp);
-        bn.addLink(Test, Cost);
-        bn.addLink(Tp, Drill);
-
-        List<Set<Node>> wholeNetworkTemporalOrder = LQGInfluenceDiagram.getTemporalOrder(bn);
-        for (int i = 1; i < wholeNetworkTemporalOrder.size(); i++) {
-            if (!wholeNetworkTemporalOrder.get(i).isEmpty()) {
-                Node dn = wholeNetworkTemporalOrder.get(i).iterator().next();
-                if (dn.getCategory() == Node.Category.Decision) {
-                    for (Set<Node> nodeSet2 : wholeNetworkTemporalOrder.subList(0, i - 1)) {
-                        for (Node n : nodeSet2)
-                            bn.addLink(n, dn);
-                    }
-                }
-            }
+        String[] states = new String[NO_STATES];
+        for (int j = 0; j < NO_STATES; j++) {
+            states[j] = Integer.toString(j);
+        }
+        for (int i = 0; i < N; i++) {
+            nodes.add(new Node(Node.VariableType.Categorical, Node.Category.Chance, "X" + i));
+            nodes.get(nodes.size() - 1).setStates(states);
+        }
+        for (int i = 0; i < N; i++) {
+            nodes.add(new Node(Node.VariableType.Categorical, Node.Category.Decision, "U" + i));
+            nodes.get(nodes.size() - 1).setStates(states);
+        }
+        for (int i = 0; i < N; i++) {
+            nodes.add(new Node(Node.VariableType.Categorical, Node.Category.Utility, "J" + i));
+        }
+        for (Node node : nodes) {
+            bn.addNode(node);
+        }
+        for (int i = 0; i < N; i++) {
+            bn.addLink(nodes.get(i + N), nodes.get(i));
+            bn.addLink(nodes.get(i + N), nodes.get(i + 2 * N));
+            bn.addLink(nodes.get(i), nodes.get(i + 2 * N));
         }
 
-        Misc.saveGraphOnDisk("graph", bn);
-        Misc.writeHuginNet("hugin.net", bn, new ArrayList<Node>(bn.getNodes()));
+        for (int i = 1; i < N; i++) {
+            bn.addLink(nodes.get(i - 1), nodes.get(i));
+            bn.addLink(nodes.get(i - 1), nodes.get(N + i));
+        }
 
+
+//        List<Set<Node>> wholeNetworkTemporalOrder = LQGInfluenceDiagram.getTemporalOrder(bn);
+//        for (int i = 1; i < wholeNetworkTemporalOrder.size(); i++) {
+//            if (!wholeNetworkTemporalOrder.get(i).isEmpty()) {
+//                Node dn = wholeNetworkTemporalOrder.get(i).iterator().next();
+//                if (dn.getCategory() == Node.Category.Decision) {
+//                    for (Set<Node> nodeSet2 : wholeNetworkTemporalOrder.subList(0, i - 1)) {
+//                        for (Node n : nodeSet2)
+//                            bn.addLink(n, dn);
+//                    }
+//                }
+//            }
+//        }
+
+        Random r = new Random(30);
+        for (Node node : nodes) {
+            Set<Node> parents = bn.getParents(node);
+            if (node.getCategory() == Node.Category.Chance) {
+                int size = (int) Math.round(Math.pow(NO_STATES, parents.size() + 1));
+                double[] potential = new double[size];
+                for (int j = 0; j < size; j++) {
+                    potential[j] = r.nextDouble();
+                }
+
+                for (int k = 0; k < size / NO_STATES; k++) {
+                    double sum = 0;
+                    for (int j = k; j < size; j += size / NO_STATES) {
+                        sum += potential[j];
+                    }
+                    for (int j = k; j < size; j += size / NO_STATES) {
+                        potential[j] /= sum;
+                    }
+                }
+                node.setPotential(potential);
+            } else if (node.getCategory() == Node.Category.Utility) {
+                int size = (int) Math.round(Math.pow(NO_STATES, parents.size()));
+                double[] potential = new double[size];
+                for (int j = 0; j < size; j++) {
+                    potential[j] = r.nextDouble();
+                }
+                node.setPotential(potential);
+            }
+
+        }
+
+        //Misc.saveGraphOnDisk("graph", bn);
+        //Misc.writeHuginNet("hugin.net", bn, new ArrayList<Node>(bn.getNodes()));
+
+        logger.info("Start");
         LQGInfluenceDiagram lid = new LQGInfluenceDiagram(bn);
         lid.getOptimalStrategy();
+        logger.info("End");
     }
 
 

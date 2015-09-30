@@ -336,8 +336,8 @@ public class LQGInfluenceDiagram {
                         } else if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Decision) {
                             newPChance = pChance.maxProject(projectionNodes, pChance.multiply(pUtility)).getPotential();
                             newPUtility = pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(newPChance);
-                            logger.info("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
-                            logger.info("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
+                            logger.debug("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
+                            logger.debug("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
 
                         } else {
                             throw new UnsupportedOperationException("Cannot eliminate a utility node.");
@@ -362,8 +362,8 @@ public class LQGInfluenceDiagram {
                 } else if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Decision) {
                     newPChance = pChance.maxProject(projectionNodes, pChance.multiply(pUtility)).getPotential();
                     newPUtility = pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(newPChance);
-                    logger.info("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
-                    logger.info("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
+                    logger.debug("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
+                    logger.debug("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
                 } else {
                     throw new UnsupportedOperationException("Cannot eliminate a utility node.");
                 }

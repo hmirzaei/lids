@@ -43,23 +43,35 @@
             },
             ContinuousChance : {
                shape: 'ellipse',
-              borderWidth: 3
+               borderWidth: 3
             },
             DiscreteDecision : {
               shape: 'box',
+              "color": {
+                "background": "rgba(117,231,252,1)"
+              }
             },
             ContinuousDecision : {
               shape: 'box',
-              borderWidth: 3
+              borderWidth: 3,
+              "color": {
+                "background": "rgba(117,231,252,1)"
+              }
             },
             DiscreteUtility : {
               shape: 'diamond',
-              size: 20
+              size: 20,
+              "color": {
+                "background": "rgba(157,233,183,1)"
+              }
             },
             ContinuousUtility : {
               shape: 'diamond',
               size: 20,
-              borderWidth: 3
+              borderWidth: 3,
+              "color": {
+                "background": "rgba(157,233,183,1)"
+              }
             }
         },
          configure: true
@@ -80,6 +92,7 @@
           };
           var network = new vis.Network(container, data, options);
     }
+
 
 
     </script>
