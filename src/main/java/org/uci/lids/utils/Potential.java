@@ -360,6 +360,30 @@ public class Potential {
         //return variables.toString();
     }
 
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return new Potential((LinkedHashSet<Node>) variables.clone(), getData());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        Potential p = (Potential) obj;
+
+        if (!this.variables.containsAll(p.variables)) return false;
+        if (!p.variables.containsAll(this.variables)) return false;
+
+        try {
+            p = (Potential) p.clone();
+            p = p.project(this.variables);
+            for (int i = 0; i < p.getTotalSize(); i++) {
+                if (Math.abs(p.getData()[i] - this.getData()[i]) > 1e-10) return false;
+            }
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+        }
+        return true;
+    }
+
     public class MaxProjectAnswer {
         private Potential potential;
         private Map<Node, Potential> maxState;
@@ -377,6 +401,4 @@ public class Potential {
             return maxState;
         }
     }
-
-
 }
