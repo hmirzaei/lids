@@ -257,13 +257,13 @@ public class CGPotential {
             if (cgHeadVariables.size() == cgCopy.headVariables.size()) {
                 CGPotential result = cg1Copy.directCombination(cgCopy);
                 result.reduce();
-                System.out.println("psi ⨶ phi  = " + result);
+//                System.out.println("psi ⨶ phi  = " + result);
                 return result;
 
             } else if (cg1HeadVariables.size() == cg1Copy.headVariables.size()) {
                 CGPotential result = cgCopy.directCombination(cg1Copy);
                 result.reduce();
-                System.out.println("phi ⨶ psi  = " + result);
+//                System.out.println("phi ⨶ psi  = " + result);
                 return result;
             } else {
                 if (!cgHeadVariables.isEmpty()) {

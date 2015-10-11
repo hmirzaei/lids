@@ -402,7 +402,7 @@ public class MatrixPotential {
 //            this.maxState = maxState;
 //        }
 //
-//        public MatrixPotential getPotential() {
+//        public MatrixPotential getPotentialArray() {
 //            return potential;
 //        }
 //

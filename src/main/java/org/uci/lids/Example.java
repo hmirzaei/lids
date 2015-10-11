@@ -80,14 +80,14 @@ public class Example {
                         potential[j] /= sum;
                     }
                 }
-                node.setPotential(potential);
+                node.setPotentialArray(potential);
             } else if (node.getCategory() == Node.Category.Utility) {
                 int size = (int) Math.round(Math.pow(NO_STATES, parents.size()));
                 double[] potential = new double[size];
                 for (int j = 0; j < size; j++) {
                     potential[j] = r.nextDouble();
                 }
-                node.setPotential(potential);
+                node.setPotentialArray(potential);
             }
 
         }

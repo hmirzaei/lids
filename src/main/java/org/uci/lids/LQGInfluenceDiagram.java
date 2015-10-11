@@ -58,10 +58,7 @@ public class LQGInfluenceDiagram {
     private void updateNodePotentials(Map<Node, Integer> evidences) {
         nodePotentialMap = new HashMap<Node, Potential>();
         for (Node n : bayesianNetwork.getNodes()) {
-            if (n.getCategory() == Node.Category.Chance)
-                nodePotentialMap.put(n, new Potential((LinkedHashSet<Node>) bayesianNetwork.getFamily(n), n.getPotential()));
-            else if (n.getCategory() == Node.Category.Utility)
-                nodePotentialMap.put(n, new Potential((LinkedHashSet<Node>) bayesianNetwork.getParents(n), n.getPotential()));
+            nodePotentialMap.put(n, n.getPotential(bayesianNetwork));
         }
         if (evidences != null) {
             for (Map.Entry<Node, Integer> entry : evidences.entrySet()) {

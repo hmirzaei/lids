@@ -1,7 +1,10 @@
 package org.uci.lids;
 
+import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.graph.Visualizable;
+import org.uci.lids.utils.Potential;
 
+import java.util.LinkedHashSet;
 import java.util.UUID;
 
 /**
@@ -13,7 +16,7 @@ public class Node implements Visualizable, Comparable<Node> {
     private Category category;
     private int size;
     private String label;
-    private double[] potential;
+    private double[] potentialArray;
     private String[] states;
 
     public Node(VariableType variableType, Category category, String label) {
@@ -27,12 +30,21 @@ public class Node implements Visualizable, Comparable<Node> {
         return states.length;
     }
 
-    public double[] getPotential() {
-        return potential;
+    public double[] getPotentialArray() {
+        return potentialArray;
     }
 
-    public void setPotential(double[] potential) {
-        this.potential = potential;
+    public void setPotentialArray(double... potentialArray) {
+        this.potentialArray = potentialArray;
+    }
+
+    public Potential getPotential(DirectedGraph<Node> bayesianNetwork) {
+        if (category == Node.Category.Chance)
+            return new Potential((LinkedHashSet<Node>) bayesianNetwork.getFamily(this), potentialArray);
+        else if (category == Category.Utility)
+            return new Potential((LinkedHashSet<Node>) bayesianNetwork.getParents(this), potentialArray);
+        else
+            return null;
     }
 
     public String[] getStates() {

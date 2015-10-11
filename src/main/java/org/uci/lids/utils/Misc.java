@@ -85,11 +85,11 @@ public class Misc {
                 writer.print(" ");
             }
             writer.println();
-            writer.println(nodes.get(i).getPotential().length);
-            for (int j = 0; j < nodes.get(i).getPotential().length; j++) {
+            writer.println(nodes.get(i).getPotentialArray().length);
+            for (int j = 0; j < nodes.get(i).getPotentialArray().length; j++) {
                 writer.print(j);
                 writer.print(" ");
-                writer.println(nodes.get(i).getPotential()[j]);
+                writer.println(nodes.get(i).getPotentialArray()[j]);
             }
             writer.println();
         }
@@ -123,7 +123,7 @@ public class Misc {
         writer.format("bnet = mk_bnet(dag, %s, 'discrete', 1:%d);", Arrays.toString(noStatesArray), nodes.size()).println();
         writer.println();
         for (int i = 0; i < N; i++) {
-            writer.format("bnet.CPD{%d} = tabular_CPD(bnet, %d, %s);", i + 1, i + 1, Arrays.toString(nodes.get(i).getPotential())).println();
+            writer.format("bnet.CPD{%d} = tabular_CPD(bnet, %d, %s);", i + 1, i + 1, Arrays.toString(nodes.get(i).getPotentialArray())).println();
         }
         writer.println();
         writer.println("tic;");
@@ -215,7 +215,7 @@ public class Misc {
             writer.println(") {");
             Potential p = null;
             if (node.getCategory() == Node.Category.Chance) {
-                p = new Potential((LinkedHashSet<Node>) bn.getFamily(node), node.getPotential());
+                p = new Potential((LinkedHashSet<Node>) bn.getFamily(node), node.getPotentialArray());
                 Set<Node> reorderedVariables = new LinkedHashSet<Node>();
                 reorderedVariables.add(node);
                 ArrayList<Node> parents = new ArrayList<Node>(bn.getParents(node));
@@ -224,7 +224,7 @@ public class Misc {
                     reorderedVariables.add(parent);
                 p = p.project(reorderedVariables);
             } else if (node.getCategory() == Node.Category.Utility) {
-                p = new Potential((LinkedHashSet<Node>) bn.getParents(node), node.getPotential());
+                p = new Potential((LinkedHashSet<Node>) bn.getParents(node), node.getPotentialArray());
                 Set<Node> reorderedVariables = new LinkedHashSet<Node>();
                 ArrayList<Node> parents = new ArrayList<Node>(bn.getParents(node));
                 Collections.reverse(parents);
