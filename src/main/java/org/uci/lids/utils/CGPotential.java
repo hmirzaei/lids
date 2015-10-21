@@ -112,10 +112,10 @@ public class CGPotential {
             MatrixPotential means2 = new MatrixPotential(h1);
             MatrixPotential variances2 = new MatrixPotential(h1);
             for (int i = 0; i < p_tilde.getTotalSize(); i++) {
-                means2.getData()[i] = new SimpleMatrix(cgCopy.headVariables.size(),1
-                        ,false, new double[cgCopy.headVariables.size()]);
+                means2.getData()[i] = new SimpleMatrix(cgCopy.headVariables.size(), 1
+                        , false, new double[cgCopy.headVariables.size()]);
                 variances2.getData()[i] = new SimpleMatrix(cgCopy.headVariables.size(), cgCopy.headVariables.size()
-                        , false, new double[cgCopy.headVariables.size()*cgCopy.headVariables.size()]);
+                        , false, new double[cgCopy.headVariables.size() * cgCopy.headVariables.size()]);
             }
 
             Iterator<int[]> indIterator =

@@ -133,11 +133,12 @@ public class CGPotentialTest
                 .directCombination(phi_d1).directCombination(phi_d2);
 
         CGPotential weak = phi_d1d2c1c2.weakMarginal(new LinkedHashSet<Node>());
-        assertTrue(weak.getMeans().getData()[0].isIdentical(new SimpleMatrix(2,1,false,28,92.8),1e-10));
-        assertTrue(Math.abs(weak.getVariances().getData()[0].get(0, 0)-118.8)<1e-10);
-        assertTrue(Math.abs(weak.getVariances().getData()[0].get(1, 1)-3767.56)<1e-10);
+        assertTrue(weak.getMeans().getData()[0].isIdentical(new SimpleMatrix(2, 1, false, 28, 92.8), 1e-10));
+        assertTrue(Math.abs(weak.getVariances().getData()[0].get(0, 0) - 118.8) < 1e-10);
+        assertTrue(Math.abs(weak.getVariances().getData()[0].get(1, 1) - 3767.56) < 1e-10);
 
     }
+
     public void testExpand() {
         LinkedHashSet<Node> t2 = new LinkedHashSet<Node>(Arrays.asList(new Node[]{c[5], c[6], c[4]}));
         try {
