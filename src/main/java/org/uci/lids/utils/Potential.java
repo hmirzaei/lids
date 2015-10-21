@@ -64,6 +64,44 @@ public class Potential {
         return new Potential(emptySet, new double[]{0});
     }
 
+    public static Iterator<int[]> getComponentIndexIterator(final Potential a, final Potential a1, final Potential a2) {
+        class ComponentIndexIterator implements Iterator<int[]> {
+            ArrayList<Node> a1Vars = new ArrayList<Node>(a1.variables);
+            ArrayList<Node> a2Vars = new ArrayList<Node>(a2.variables);
+            ArrayList<Node> aVars = new ArrayList<Node>(a.variables);
+
+            int[] a1Bits = new int[a1Vars.size()];
+            int[] a2Bits = new int[a2Vars.size()];
+            int counter = 0;
+
+            {
+                for (int i = 0; i < a1Vars.size(); i++) {
+                    a1Bits[i] = aVars.indexOf(a1Vars.get(i));
+                }
+                for (int i = 0; i < a2Vars.size(); i++) {
+                    a2Bits[i] = aVars.indexOf(a2Vars.get(i));
+                }
+            }
+
+            public boolean hasNext() {
+                return counter < a.getTotalSize();
+            }
+
+            public int[] next() {
+                List<Integer> ind = a.getIndex(counter++);
+                List<Integer> a1Ind = new ArrayList<Integer>();
+                List<Integer> a2Ind = new ArrayList<Integer>();
+                for (int j : a1Bits)
+                    a1Ind.add(ind.get(j));
+                for (int j : a2Bits)
+                    a2Ind.add(ind.get(j));
+                return new int[]{a1.getPotPosition(a1Ind), a2.getPotPosition(a2Ind)};
+            }
+
+        }
+        return new ComponentIndexIterator();
+    }
+
     public LinkedHashSet<Node> getVariables() {
         return variables;
     }

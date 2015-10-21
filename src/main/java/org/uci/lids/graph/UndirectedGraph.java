@@ -213,29 +213,33 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
             visited.add(maxCardinalityVertex.getContent());
         }
 
-        JunctionTreeAndRoot jtreeAndRoot = new JunctionTreeAndRoot();
-        jtreeAndRoot.junctionTree = junctionTree;
+        if (temporalOrder == null) {
+            JunctionTreeAndRoot result = new JunctionTreeAndRoot();
+            result.junctionTree = junctionTree;
+            return result;
+        } else {
+            JunctionTreeAndRoot jtreeAndRoot = new JunctionTreeAndRoot();
+            jtreeAndRoot.junctionTree = junctionTree;
 
-        logger.debug("eliminationOrder = " + eliminationOrder);
+            logger.debug("eliminationOrder = " + eliminationOrder);
 
-        Map<E, Integer> nodeValues = new HashMap<E, Integer>();
-        int value = 0;
-        for (int i = eliminationOrder.size() - 1; i >= 0; i--)
-            nodeValues.put(eliminationOrder.get(i), value++);
+            Map<E, Integer> nodeValues = new HashMap<E, Integer>();
+            int value = 0;
+            for (int i = eliminationOrder.size() - 1; i >= 0; i--)
+                nodeValues.put(eliminationOrder.get(i), value++);
 
-        Map<JunctionTreeNode<E>, Set<E>> visitedNodes = new HashMap<JunctionTreeNode<E>, Set<E>>();
-        Map<JunctionTreeNode<E>, Integer> cliqueNumbers = new HashMap<JunctionTreeNode<E>, Integer>();
-        Map<JunctionTreeNode<E>, Set<JunctionTreeNode<E>>> commonCliques = new HashMap<JunctionTreeNode<E>, Set<JunctionTreeNode<E>>>();
+            Map<JunctionTreeNode<E>, Set<E>> visitedNodes = new HashMap<JunctionTreeNode<E>, Set<E>>();
+            Map<JunctionTreeNode<E>, Integer> cliqueNumbers = new HashMap<JunctionTreeNode<E>, Integer>();
+            Map<JunctionTreeNode<E>, Set<JunctionTreeNode<E>>> commonCliques = new HashMap<JunctionTreeNode<E>, Set<JunctionTreeNode<E>>>();
 
-        for (JunctionTreeNode<E> e : junctionTree.getNodes())
-            if (e instanceof CliqueNode) {
-                visitedNodes.put(e, new HashSet<E>());
-                cliqueNumbers.put(e, -1);
-                commonCliques.put(e, new HashSet<JunctionTreeNode<E>>());
-            }
+            for (JunctionTreeNode<E> e : junctionTree.getNodes())
+                if (e instanceof CliqueNode) {
+                    visitedNodes.put(e, new HashSet<E>());
+                    cliqueNumbers.put(e, -1);
+                    commonCliques.put(e, new HashSet<JunctionTreeNode<E>>());
+                }
 
 
-        if (temporalOrder != null) {
             ListIterator<E> li = eliminationOrder.listIterator(eliminationOrder.size());
             while (li.hasPrevious()) {
                 E n = li.previous();
@@ -305,9 +309,9 @@ public class UndirectedGraph<E> extends AbstractGraph<E, UndirectedVertex<E>> im
             jtreeAndRoot.rootClique = (CliqueNode<E>) cliqueNumbers.keySet().iterator().next();
             assertStrength(junctionTree2, temporalOrder, jtreeAndRoot.rootClique);
             jtreeAndRoot.junctionTree = junctionTree2;
-        }
 
-        return jtreeAndRoot;
+            return jtreeAndRoot;
+        }
     }
 
     private void addTreeLinks(DirectedGraph<E> g, Set<E> v, E e, Boolean d) {

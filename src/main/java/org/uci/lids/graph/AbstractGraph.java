@@ -88,4 +88,9 @@ public abstract class AbstractGraph<E, Vertex extends AbstractVertex> {
     }
 
 
+    public void addNodes(E... nodes) {
+        for (E e : nodes) {
+            addNode(e);
+        }
+    }
 }

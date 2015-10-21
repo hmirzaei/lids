@@ -43,7 +43,10 @@
             },
             ContinuousChance : {
                shape: 'ellipse',
-               borderWidth: 3
+               borderWidth: 3,
+              "color": {
+                "background": "rgba(198,220,252,1)"
+              }
             },
             DiscreteDecision : {
               shape: 'box',
@@ -92,6 +95,7 @@
           };
           var network = new vis.Network(container, data, options);
     }
+
 
 
 

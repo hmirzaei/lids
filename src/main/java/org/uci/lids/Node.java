@@ -1,10 +1,15 @@
 package org.uci.lids;
 
+import org.ejml.simple.SimpleMatrix;
 import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.graph.Visualizable;
+import org.uci.lids.utils.CGPotential;
+import org.uci.lids.utils.MatrixPotential;
 import org.uci.lids.utils.Potential;
 
+import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -46,6 +51,50 @@ public class Node implements Visualizable, Comparable<Node> {
         else
             return null;
     }
+
+    public CGPotential getCGPotential(DirectedGraph<Node> bayesianNetwork) {
+        Potential p;
+        MatrixPotential means;
+        MatrixPotential regCoeffs;
+        MatrixPotential variances;
+        Set<Node> parents = bayesianNetwork.getParents(this);
+        LinkedHashSet<Node> discreteParents = new LinkedHashSet<Node>();
+        LinkedHashSet<Node> continuousParents = new LinkedHashSet<Node>();
+        for (Node n : parents) {
+            if (n.getVariableType() == VariableType.Categorical)
+                discreteParents.add(n);
+            else
+                continuousParents.add(n);
+        }
+
+        if (variableType == VariableType.Categorical) {
+            p = getPotential(bayesianNetwork);
+            means = new MatrixPotential(p.getVariables());
+            regCoeffs = new MatrixPotential(p.getVariables());
+            variances = new MatrixPotential(p.getVariables());
+            return new CGPotential(p.getVariables(), new LinkedHashSet<Node>(), new LinkedHashSet<Node>(), p,
+                    means, regCoeffs, variances);
+        } else if (variableType == VariableType.Continuous) {
+            p = Potential.unityPotential().add(new Potential(discreteParents));
+            means = new MatrixPotential(discreteParents);
+            regCoeffs = new MatrixPotential(discreteParents);
+            variances = new MatrixPotential(discreteParents);
+            int counter = 0;
+            for (int i = 0; i < p.getTotalSize(); i++)
+                means.getData()[i] = new SimpleMatrix(1, 1, true, potentialArray[counter++]);
+            for (int i = 0; i < p.getTotalSize(); i++) {
+                regCoeffs.getData()[i] = new SimpleMatrix(1, continuousParents.size(), true,
+                        Arrays.copyOfRange(potentialArray, counter, counter + continuousParents.size()));
+                counter += continuousParents.size();
+            }
+            for (int i = 0; i < p.getTotalSize(); i++)
+                variances.getData()[i] = new SimpleMatrix(1, 1, true, potentialArray[counter++]);
+            return new CGPotential(p.getVariables(), new LinkedHashSet<Node>(Arrays.asList(this)), continuousParents, p,
+                    means, regCoeffs, variances);
+        }
+        return null;
+    }
+
 
     public String[] getStates() {
         return states;
@@ -119,7 +168,7 @@ public class Node implements Visualizable, Comparable<Node> {
     }
 
     public enum VariableType {
-        Binary, Categorical, Continuous
+        Categorical, Continuous
     }
 
 
