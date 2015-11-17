@@ -11,13 +11,13 @@ import java.util.*;
 /**
  * Created by hamid on 3/9/15.
  */
-public class LQGInfluenceDiagram {
+public class InfluenceDiagram {
 
-    final static Logger logger = Logger.getLogger(LQGInfluenceDiagram.class);
+    final static Logger logger = Logger.getLogger(InfluenceDiagram.class);
     private DirectedGraph<Node> bayesianNetwork;
     private Map<Node, Potential> nodePotentialMap;
 
-    public LQGInfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
+    public InfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
         this.bayesianNetwork = bayesianNetwork;
     }
 

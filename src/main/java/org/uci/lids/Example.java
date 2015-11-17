@@ -10,7 +10,7 @@ import java.util.Set;
 
 
 public class Example {
-    final static Logger logger = Logger.getLogger(LQGInfluenceDiagram.class);
+    final static Logger logger = Logger.getLogger(InfluenceDiagram.class);
 
     public static void main(String[] args) {
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
@@ -48,7 +48,7 @@ public class Example {
         }
 
 
-//        List<Set<Node>> wholeNetworkTemporalOrder = LQGInfluenceDiagram.getTemporalOrder(bn);
+//        List<Set<Node>> wholeNetworkTemporalOrder = InfluenceDiagram.getTemporalOrder(bn);
 //        for (int i = 1; i < wholeNetworkTemporalOrder.size(); i++) {
 //            if (!wholeNetworkTemporalOrder.get(i).isEmpty()) {
 //                Node dn = wholeNetworkTemporalOrder.get(i).iterator().next();
@@ -96,7 +96,7 @@ public class Example {
         //Misc.writeHuginNet("hugin.net", bn, new ArrayList<Node>(bn.getNodes()));
 
         logger.info("Start");
-        LQGInfluenceDiagram lid = new LQGInfluenceDiagram(bn);
+        InfluenceDiagram lid = new InfluenceDiagram(bn);
         lid.getOptimalStrategy();
         logger.info("End");
     }
