@@ -110,6 +110,10 @@ public class Potential {
         return ZeroConsciousDouble.toDoubleArray(this.data);
     }
 
+    public void set(int index, double value) {
+        data[index] = new ZeroConsciousDouble(value);
+    }
+
     public Potential multiply(Potential p) {
         LinkedHashSet<Node> variables = new LinkedHashSet<Node>(this.variables);
         variables.addAll(p.variables);

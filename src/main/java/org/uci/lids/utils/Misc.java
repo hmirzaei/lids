@@ -1,5 +1,6 @@
 package org.uci.lids.utils;
 
+import org.ejml.simple.SimpleMatrix;
 import org.uci.lids.Node;
 import org.uci.lids.graph.AbstractGraph;
 import org.uci.lids.graph.DirectedGraph;
@@ -247,6 +248,75 @@ public class Misc {
         }
 
         writer.close();
+    }
+
+    public static void writeCvxScript(String filename, DirectedGraph<Node> bn, List<Node> nodes) {
+        PrintWriter writer = null;
+        try {
+            writer = new PrintWriter(filename);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        String variables = "";
+        String utility = "";
+        String constraints = "";
+        String utilityPrefix = "";
+
+        for (Node node : nodes) {
+            if (node.getCategory() == Node.Category.Utility) {
+                CGUtility cgu = node.getCGUtility(bn);
+                String varVector = "[";
+                for (Node n : cgu.getContinuousVariables()) {
+                    if (n.getCategory() == Node.Category.Chance)
+                        varVector += "x" + n.getLabel() + "; ";
+                    else
+                        varVector += "d" + n.getLabel() + "; ";
+                }
+                varVector += "]";
+
+                utility += utilityPrefix + varVector + ".' * " + getMatlabString(cgu.getQ().getData()[0]) + " * " + varVector
+                        + " + " + getMatlabString(cgu.getR().getData()[0]) + " * " + varVector + " + " + cgu.getS().getData()[0];
+                utilityPrefix = " + ";
+            } else if (node.getCategory() == Node.Category.Chance) {
+                CGPotential cg = node.getCGPotential(bn);
+                String varVector = "[";
+                for (Node n : cg.getTailVariables()) {
+                    if (n.getCategory() == Node.Category.Chance)
+                        varVector += "x" + n.getLabel() + "; ";
+                    else
+                        varVector += "d" + n.getLabel() + "; ";
+                }
+                varVector += "]";
+                variables += "x" + node.getLabel() + " ";
+                constraints += "x" + node.getLabel() + " == " + cg.getMeans().getData()[0].get(0, 0);
+                if (!cg.getTailVariables().isEmpty()) {
+                    constraints += " + "
+                            + getMatlabString(cg.getRegressionCoefficients().getData()[0]) + " * " + varVector;
+                }
+                constraints += ";\n";
+            } else {
+                variables += "d" + node.getLabel() + " ";
+            }
+        }
+        writer.println("cvx_begin");
+        writer.println("variables " + variables);
+        writer.println("maximize(" + utility + ")");
+        writer.println("subject to");
+        writer.println(constraints);
+        writer.println("cvx_end");
+        writer.close();
+    }
+
+    private static String getMatlabString(SimpleMatrix mat) {
+        String result = "[\n";
+        for (int i = 0; i < mat.numRows(); i++) {
+            for (int j = 0; j < mat.numCols(); j++) {
+                result += mat.get(i, j) + " ";
+            }
+            result += "\n";
+        }
+        result += "]";
+        return result;
     }
 
     private static String getPotentialDataString(Potential potential,

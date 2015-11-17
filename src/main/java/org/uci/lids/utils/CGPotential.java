@@ -35,6 +35,13 @@ public class CGPotential {
         this.variances = variances;
     }
 
+    public static CGPotential unityPotential() {
+        return new CGPotential(new LinkedHashSet<Node>(), new LinkedHashSet<Node>(), new LinkedHashSet<Node>(),
+                Potential.unityPotential(), new MatrixPotential(new LinkedHashSet<Node>()),
+                new MatrixPotential(new LinkedHashSet<Node>()),
+                new MatrixPotential(new LinkedHashSet<Node>()));
+    }
+
     public LinkedHashSet<Node> getDiscreteVariables() {
         return discreteVariables;
     }
@@ -277,6 +284,8 @@ public class CGPotential {
         } else {
             LinkedHashSet<Node> h2 = (LinkedHashSet<Node>) this.headVariables.clone();
             h2.removeAll(h1);
+            if (h2.isEmpty())
+                return CGPotential.unityPotential();
             List<Node> hList = new ArrayList<Node>(headVariables);
             List<Node> h1List = new ArrayList<Node>(h1);
             List<Node> h2List = new ArrayList<Node>(h2);
@@ -342,6 +351,12 @@ public class CGPotential {
     public CGPotential recursiveCombination(CGPotential cg1) {
         CGPotential cgCopy = null;
         try {
+            if (cg1.getHeadVariables().isEmpty())
+                return (CGPotential) this.clone();
+
+            if (this.getHeadVariables().isEmpty())
+                return (CGPotential) cg1.clone();
+
             cgCopy = (CGPotential) this.clone();
             CGPotential cg1Copy = (CGPotential) cg1.clone();
             LinkedHashSet<Node> cgHeadVariables = (LinkedHashSet<Node>) cgCopy.headVariables.clone();
@@ -395,30 +410,38 @@ public class CGPotential {
     }
 
     public void expand(LinkedHashSet<Node> t1) {
-        int[] indices = new int[t1.size()];
-
-        Iterator<Node> t1Iterator = t1.iterator();
-        int i = 0;
-        while (t1Iterator.hasNext()) {
-            Node h1n = t1Iterator.next();
-            Iterator<Node> hIterator = tailVariables.iterator();
-            indices[i] = -1;
-            int j = 0;
-            while (hIterator.hasNext()) {
-                Node hn = hIterator.next();
-                if (hn.equals(h1n)) {
-                    indices[i] = j;
-                    break;
-                }
-                j++;
+        if (tailVariables.isEmpty()) {
+            MatrixPotential regressionCoefficients1 = new MatrixPotential(this.discreteVariables);
+            for (int j = 0; j < regressionCoefficients1.getData().length; j++) {
+                regressionCoefficients.getData()[j] = new SimpleMatrix(headVariables.size(), t1.size(), false,
+                        new double[t1.size() * headVariables.size()]);
             }
-            i++;
+        } else {
+            int[] indices = new int[t1.size()];
+
+            Iterator<Node> t1Iterator = t1.iterator();
+            int i = 0;
+            while (t1Iterator.hasNext()) {
+                Node h1n = t1Iterator.next();
+                Iterator<Node> hIterator = tailVariables.iterator();
+                indices[i] = -1;
+                int j = 0;
+                while (hIterator.hasNext()) {
+                    Node hn = hIterator.next();
+                    if (hn.equals(h1n)) {
+                        indices[i] = j;
+                        break;
+                    }
+                    j++;
+                }
+                i++;
+            }
+            MatrixPotential regressionCoefficients1 = new MatrixPotential(this.discreteVariables);
+            for (int j = 0; j < regressionCoefficients1.getData().length; j++) {
+                regressionCoefficients.getData()[j] = MatrixUtils.subMatrixByColumns(regressionCoefficients.getData()[j], indices);
+            }
         }
-        MatrixPotential regressionCoefficients1 = new MatrixPotential(this.discreteVariables);
-        for (int j = 0; j < regressionCoefficients1.getData().length; j++) {
-            regressionCoefficients.getData()[j] = MatrixUtils.subMatrixByColumns(regressionCoefficients.getData()[j], indices);
-        }
-        tailVariables = t1;
+        tailVariables = (LinkedHashSet<Node>) t1.clone();
     }
 
     public void reduce() {
@@ -447,8 +470,9 @@ public class CGPotential {
         }
         tailVariables.retainAll(tails1);
         for (int i = 0; i < regressionCoefficients.getData().length; i++) {
-            regressionCoefficients.getData()[i] = MatrixUtils.subMatrixByColumns(regressionCoefficients.getData()[i],
-                    Arrays.copyOfRange(indices, 0, k));
+            if (regressionCoefficients.getData()[i] != null)
+                regressionCoefficients.getData()[i] = MatrixUtils.subMatrixByColumns(regressionCoefficients.getData()[i],
+                        Arrays.copyOfRange(indices, 0, k));
         }
 
     }
@@ -487,8 +511,7 @@ public class CGPotential {
         if (!this.discretePotential.equals(cg1.discretePotential)) return false;
         if (!this.means.equals(cg1.means)) return false;
         if (!this.regressionCoefficients.equals(cg1.regressionCoefficients)) return false;
-        if (!this.variances.equals(cg1.variances)) return false;
+        return this.variances.equals(cg1.variances);
 
-        return true;
     }
 }

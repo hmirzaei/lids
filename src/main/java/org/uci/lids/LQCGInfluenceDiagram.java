@@ -3,6 +3,8 @@ package org.uci.lids;
 import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.uci.lids.graph.*;
+import org.uci.lids.utils.CGPotential;
+import org.uci.lids.utils.CGUtility;
 import org.uci.lids.utils.Misc;
 import org.uci.lids.utils.Potential;
 
@@ -11,13 +13,13 @@ import java.util.*;
 /**
  * Created by hamid on 3/9/15.
  */
-public class LQGInfluenceDiagram {
+public class LQCGInfluenceDiagram {
 
-    final static Logger logger = Logger.getLogger(LQGInfluenceDiagram.class);
+    final static Logger logger = Logger.getLogger(LQCGInfluenceDiagram.class);
     private DirectedGraph<Node> bayesianNetwork;
-    private Map<Node, Potential> nodePotentialMap;
+    private Map<Node, Object> nodePotentialMap;
 
-    public LQGInfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
+    public LQCGInfluenceDiagram(DirectedGraph<Node> bayesianNetwork) {
         this.bayesianNetwork = bayesianNetwork;
     }
 
@@ -76,27 +78,30 @@ public class LQGInfluenceDiagram {
     }
 
     private void updateNodePotentials(Map<Node, Integer> evidences) {
-        nodePotentialMap = new HashMap<Node, Potential>();
+        nodePotentialMap = new HashMap<Node, Object>();
         for (Node n : bayesianNetwork.getNodes()) {
-            nodePotentialMap.put(n, n.getPotential(bayesianNetwork));
+            if (n.getCategory() == Node.Category.Chance)
+                nodePotentialMap.put(n, n.getCGPotential(bayesianNetwork));
+            if (n.getCategory() == Node.Category.Utility)
+                nodePotentialMap.put(n, n.getCGUtility(bayesianNetwork));
         }
-        if (evidences != null) {
+        /*if (evidences != null) {
             for (Map.Entry<Node, Integer> entry : evidences.entrySet()) {
                 Node n = entry.getKey();
                 for (Node member : bayesianNetwork.getChildren(n))
                     this.getNodePotential(member).applyEvidence(n, entry.getValue());
                 this.getNodePotential(n).applyEvidence(n, entry.getValue());
             }
-        }
+        }*/
     }
 
-    public Map<Node, Potential> getOptimalStrategy() {
+    public Map<Node, CGPotential> getOptimalStrategy() {
         return this.getOptimalStrategy(null);
     }
 
-    public Map<Node, Potential> getOptimalStrategy(Map<Node, Integer> evidences) {
+    public Map<Node, CGPotential> getOptimalStrategy(Map<Node, Integer> evidences) {
         this.updateNodePotentials(evidences);
-        Map<Node, Potential> strategy = new HashMap<Node, Potential>();
+        Map<Node, CGPotential> strategy = new HashMap<Node, CGPotential>();
 
         List<DirectedGraph<Node>> connectedComponents = this.bayesianNetwork.getConnectedComponents();
         for (DirectedGraph<Node> graph : connectedComponents) {
@@ -105,7 +110,7 @@ public class LQGInfluenceDiagram {
         return strategy;
     }
 
-    private void getConnectedComponent‌OptimalStrategy(DirectedGraph<Node> bayesianNetwork, Map<Node, Potential> strategy) {
+    private void getConnectedComponent‌OptimalStrategy(DirectedGraph<Node> bayesianNetwork, Map<Node, CGPotential> strategy) {
         UndirectedGraph<Node> moralized = getMoralizedInfluenceDiagram(bayesianNetwork);
         List<Set<Node>> wholeNetworkTemporalOrder = getTemporalOrder(bayesianNetwork);
 
@@ -150,12 +155,12 @@ public class LQGInfluenceDiagram {
 
 
             DirectedGraph<Node> subGraph = bayesianNetwork.getSubGraph(graph.getNodes());
-            Map<JunctionTreeNode<Node>, Set<Potential>> chanceCliquePotentials = getChanceCliquePotentials(subGraph, jt);
-            Map<JunctionTreeNode<Node>, Set<Potential>> utilityCliquePotentials = getUtilityCliquePotentials(bayesianNetwork, jt);
+            Map<JunctionTreeNode<Node>, Set<CGPotential>> chanceCliquePotentials = getChanceCliquePotentials(subGraph, jt);
+            Map<JunctionTreeNode<Node>, Set<CGUtility>> utilityCliquePotentials = getUtilityCliquePotentials(bayesianNetwork, jt);
             logger.debug("chanceCliquePotentials = " + chanceCliquePotentials);
             logger.debug("utilityCliquePotentials = " + utilityCliquePotentials);
-            Map<JunctionTreeNode<Node>, Potential> chanceMessages = getChanceInitializedMessages(jt); // might be redundant
-            Map<JunctionTreeNode<Node>, Potential> utilityMessages = getUtilityInitializedMessages(jt); // might be redundant
+            Map<JunctionTreeNode<Node>, CGPotential> chanceMessages = getChanceInitializedMessages(jt); // might be redundant
+            Map<JunctionTreeNode<Node>, CGUtility> utilityMessages = getUtilityInitializedMessages(jt); // might be redundant
 
             List<JunctionTreeNode<Node>> topologicalSorted = jt.getTopologicalOrderedNodes();
             performDecisionMessagePassing(jt, chanceCliquePotentials, utilityCliquePotentials, strategy,
@@ -163,39 +168,39 @@ public class LQGInfluenceDiagram {
         }
     }
 
-    public Potential getNodePotential(Node node) {
+    public Object getNodePotential(Node node) {
         return nodePotentialMap.get(node);
     }
 
-    public Map<Node, Potential> getMarginals() {
+    public Map<Node, CGPotential> getMarginals() {
         return getMarginals(null);
     }
 
-    public Map<Node, Potential> getMarginals(Map<Node, Integer> evidences) {
+    public Map<Node, CGPotential> getMarginals(Map<Node, Integer> evidences) { //TODO not complete
         this.updateNodePotentials(evidences);
-        Map<JunctionTreeNode<Node>, Potential> cliqueMarginals = new HashMap<JunctionTreeNode<Node>, Potential>();
+        Map<JunctionTreeNode<Node>, CGPotential> cliqueMarginals = new HashMap<JunctionTreeNode<Node>, CGPotential>();
 
         List<DirectedGraph<Node>> connectedComponents = this.bayesianNetwork.getConnectedComponents();
         for (DirectedGraph<Node> graph : connectedComponents) {
             getConnectedComponentMarginal(graph, cliqueMarginals);
         }
-        Map<Node, Potential> result = new HashMap<Node, Potential>();
-        for (Map.Entry<JunctionTreeNode<Node>, Potential> entry : cliqueMarginals.entrySet()) {
-            for (Node node : entry.getKey().getMembers()) {
-                LinkedHashSet<Node> s = new LinkedHashSet<Node>();
-                s.add(node);
-                result.put(node, entry.getValue().project(s));
-            }
-        }
-        if (evidences != null) {
-            for (Map.Entry<Node, Potential> entry : result.entrySet()) {
-                entry.getValue().normalize(entry.getKey());
-            }
-        }
+        Map<Node, CGPotential> result = new HashMap<Node, CGPotential>();
+//        for (Map.Entry<JunctionTreeNode<Node>, Potential> entry : cliqueMarginals.entrySet()) {
+//            for (Node node : entry.getKey().getMembers()) {
+//                LinkedHashSet<Node> s = new LinkedHashSet<Node>();
+//                s.add(node);
+//                result.put(node, entry.getValue().project(s));
+//            }
+//        }
+//        if (evidences != null) {
+//            for (Map.Entry<Node, CGPotential> entry : result.entrySet()) {
+//                entry.getValue().normalize(entry.getKey());
+//            }
+//        }
         return result;
     }
 
-    private void getConnectedComponentMarginal(DirectedGraph<Node> graph, Map<JunctionTreeNode<Node>, Potential> cliqueMarginals) {
+    private void getConnectedComponentMarginal(DirectedGraph<Node> graph, Map<JunctionTreeNode<Node>, CGPotential> cliqueMarginals) { //TODO not complete
         UndirectedGraph<Node> moralized = graph.getMoralizedUndirectedCopy();
         moralized.triangulate();
         UndirectedGraph<JunctionTreeNode<Node>> jt = moralized.getJunctionTree();
@@ -208,20 +213,20 @@ public class LQGInfluenceDiagram {
             root = it.next();
         } while (jt.getAdjacents(root).size() > 1);
 
-        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = getChanceCliquePotentials(graph, jt);
-        Map<Edge<JunctionTreeNode<Node>>, Potential> messages = getInitializedMessages(jt);
+        Map<JunctionTreeNode<Node>, Set<CGPotential>> cliquePotentials = getChanceCliquePotentials(graph, jt);
+        Map<Edge<JunctionTreeNode<Node>>, CGPotential> messages = getInitializedMessages(jt);
 
-        DirectedGraph<JunctionTreeNode<Node>> jtd = jt.getTreeSinkTo(root);
-        List<JunctionTreeNode<Node>> topologicalSorted = jtd.getTopologicalOrderedNodes();
-        performMessagePassing(jt, jtd, cliquePotentials, cliqueMarginals, topologicalSorted, messages, false);
-
-        jtd = jt.getTreeSourceFrom(root);
-
-        topologicalSorted = jtd.getTopologicalOrderedNodes();
-        performMessagePassing(jt, jtd, cliquePotentials, cliqueMarginals, topologicalSorted, messages, true);
+//        DirectedGraph<JunctionTreeNode<Node>> jtd = jt.getTreeSinkTo(root);
+//        List<JunctionTreeNode<Node>> topologicalSorted = jtd.getTopologicalOrderedNodes();
+//        performMessagePassing(jt, jtd, cliquePotentials, cliqueMarginals, topologicalSorted, messages, false);
+//
+//        jtd = jt.getTreeSourceFrom(root);
+//
+//        topologicalSorted = jtd.getTopologicalOrderedNodes();
+//        performMessagePassing(jt, jtd, cliquePotentials, cliqueMarginals, topologicalSorted, messages, true);
     }
 
-    private void performMessagePassing(UndirectedGraph<JunctionTreeNode<Node>> jt, DirectedGraph<JunctionTreeNode<Node>> jtd,
+    private void performMessagePassing(UndirectedGraph<JunctionTreeNode<Node>> jt, DirectedGraph<JunctionTreeNode<Node>> jtd, //TODO not touched
                                        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials, Map<JunctionTreeNode<Node>,
             Potential> cliqueMarginals, List<JunctionTreeNode<Node>> topologicalSorted,
                                        Map<Edge<JunctionTreeNode<Node>>, Potential> messages, boolean calculateMarginals) {
@@ -264,11 +269,11 @@ public class LQGInfluenceDiagram {
     }
 
     private void performDecisionMessagePassing(DirectedGraph<JunctionTreeNode<Node>> sjt,
-                                               Map<JunctionTreeNode<Node>, Set<Potential>> chanceCliquePotentials,
-                                               Map<JunctionTreeNode<Node>, Set<Potential>> utilityCliquePotentials,
-                                               Map<Node, Potential> strategy, List<JunctionTreeNode<Node>> topologicalSorted,
-                                               Map<JunctionTreeNode<Node>, Potential> chanceMessages,
-                                               Map<JunctionTreeNode<Node>, Potential> utilityMessages,
+                                               Map<JunctionTreeNode<Node>, Set<CGPotential>> chanceCliquePotentials,
+                                               Map<JunctionTreeNode<Node>, Set<CGUtility>> utilityCliquePotentials,
+                                               Map<Node, CGPotential> strategy, List<JunctionTreeNode<Node>> topologicalSorted,
+                                               Map<JunctionTreeNode<Node>, CGPotential> chanceMessages,
+                                               Map<JunctionTreeNode<Node>, CGUtility> utilityMessages,
                                                final Map<Node, Integer> temporalGroupNumber) {
 
 
@@ -279,8 +284,8 @@ public class LQGInfluenceDiagram {
                 Set<JunctionTreeNode<Node>> parents = sjt.getParents(jtNode);
                 logger.debug("parents = " + parents);
 
-                Set<Potential> nodeChanceMessages = new HashSet<Potential>(chanceCliquePotentials.get(jtNode));
-                Set<Potential> nodeUtilityMessages = new HashSet<Potential>(utilityCliquePotentials.get(jtNode));
+                Set<CGPotential> nodeChanceMessages = new HashSet<CGPotential>(chanceCliquePotentials.get(jtNode));
+                Set<CGUtility> nodeUtilityMessages = new HashSet<CGUtility>(utilityCliquePotentials.get(jtNode));
                 for (JunctionTreeNode<Node> member : parents) {
                     nodeChanceMessages.add(chanceMessages.get(member));
                     nodeUtilityMessages.add(utilityMessages.get(member));
@@ -288,10 +293,41 @@ public class LQGInfluenceDiagram {
 
                 logger.debug("nodeChanceMessages = " + nodeChanceMessages);
                 logger.debug("nodeUtilityMessages = " + nodeUtilityMessages);
-                Potential pChance = Potential.multiply(nodeChanceMessages).multiply(Potential.unityPotential(jtNode.getMembers()));
-                Potential pUtility = Potential.sum(nodeUtilityMessages).multiply(Potential.unityPotential(jtNode.getMembers()));
-                logger.debug("pChance = " + pChance);
-                logger.debug("pUtility = " + pUtility);
+
+                Set<Node> continuousNodes = new HashSet<Node>();
+                Map<Node, CGPotential> nodeCGPotentials = new HashMap<Node, CGPotential>();
+                for (CGPotential c : nodeChanceMessages) {
+                    continuousNodes.addAll(c.getHeadVariables());
+                    continuousNodes.addAll(c.getTailVariables());
+                    if (!c.getHeadVariables().isEmpty())
+                        nodeCGPotentials.put(c.getHeadVariables().iterator().next(), c);
+                }
+
+                DirectedGraph<Node> subGraph = bayesianNetwork.getSubGraph(continuousNodes);
+                List<Node> sortedNodes = subGraph.getTopologicalOrderedNodes();
+                sortedNodes.retainAll(nodeCGPotentials.keySet());
+
+                logger.debug("sortedNodes = " + sortedNodes);
+
+                CGPotential cgChance;
+                if (!sortedNodes.isEmpty()) {
+                    cgChance = nodeCGPotentials.get(sortedNodes.get(0));
+                    for (int i = 1; i < sortedNodes.size(); i++) {
+                        cgChance = cgChance.directCombination(nodeCGPotentials.get(sortedNodes.get(i)));
+                    }
+                } else {
+                    cgChance = nodeChanceMessages.iterator().next();
+                }
+
+                Iterator<CGUtility> utilityIterator = nodeUtilityMessages.iterator();
+                CGUtility cgUtility = utilityIterator.next();
+
+                while (utilityIterator.hasNext()) {
+                    cgUtility = cgUtility.add(utilityIterator.next());
+                }
+
+                logger.debug("cgChance = " + cgChance);
+                logger.debug("cgUtility = " + cgUtility);
 
                 Set<Node> projectionNodes;
                 if (!sjt.getChildren(jtNode).isEmpty()) {
@@ -301,12 +337,18 @@ public class LQGInfluenceDiagram {
                     projectionNodes = new HashSet<Node>();
                 }
 
-                Set<Node> eliminatedNodes = new HashSet<Node>(pChance.getVariables());
+                LinkedHashSet<Node> expandedNodes = (LinkedHashSet<Node>) cgUtility.getContinuousVariables().clone();
+                expandedNodes.addAll(cgChance.getTailVariables());
+                cgUtility.expand(expandedNodes);
+                expandedNodes.removeAll(cgChance.getHeadVariables());
+                cgChance.expand(expandedNodes);
+
+                Set<Node> eliminatedNodes = new HashSet<Node>(cgChance.getHeadVariables());
+                eliminatedNodes.addAll(cgUtility.getContinuousVariables());
                 eliminatedNodes.removeAll(projectionNodes);
+
                 logger.debug("eliminatedNodes = " + eliminatedNodes);
 
-                // init projectionNodes for step by step elimination
-                projectionNodes = new HashSet<Node>(pChance.getVariables());
                 List<Node> orderedEliminatedNodes = Misc.asSortedList(eliminatedNodes, new Comparator<Node>() {
                     public int compare(Node o1, Node o2) {
                         return temporalGroupNumber.get(o2).compareTo(temporalGroupNumber.get(o1)); // sort descending
@@ -314,116 +356,96 @@ public class LQGInfluenceDiagram {
                 });
                 logger.debug("orderedEliminatedNodes = " + orderedEliminatedNodes);
 
-                Iterator<Node> eliminatedNodeIterator = orderedEliminatedNodes.iterator();
-                int prevGroupNumber = temporalGroupNumber.get(orderedEliminatedNodes.get(0));
-                Set<Node> nodesToEliminateTogether = new HashSet<Node>();
-                while (eliminatedNodeIterator.hasNext()) {
-                    Node node = eliminatedNodeIterator.next();
-                    Integer nodeGroupNumber = temporalGroupNumber.get(node);
-                    if (nodeGroupNumber == prevGroupNumber) {
-                        nodesToEliminateTogether.add(node);
-                    } else {
-                        logger.debug("nodesToEliminateTogether = " + nodesToEliminateTogether);
-                        projectionNodes.removeAll(nodesToEliminateTogether);
-                        Potential newPChance;
-                        Potential newPUtility;
-                        if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Chance) {
-                            newPChance = pChance.project(projectionNodes);
-                            newPUtility = pChance.multiply(pUtility).project(projectionNodes).divide(newPChance);
-                        } else if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Decision) {
-                            newPChance = pChance.maxProject(projectionNodes, pChance.multiply(pUtility)).getPotential();
-                            newPUtility = pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(newPChance);
-                            logger.debug("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
-                            logger.debug("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
+                Set<Node> processedNodes = new HashSet<Node>();
 
-                        } else {
-                            throw new UnsupportedOperationException("Cannot eliminate a utility node.");
+                for (Node node : orderedEliminatedNodes) {
+                    if (cgChance.getHeadVariables().contains(node)) {
+                        LinkedHashSet<Node> headMarginalNodes = (LinkedHashSet<Node>) cgChance.getHeadVariables().clone();
+                        headMarginalNodes.remove(node);
+                        if (cgUtility.getContinuousVariables().contains(node)) {
+                            CGPotential complement = cgChance.complement(headMarginalNodes);
+                            expandedNodes = (LinkedHashSet<Node>) complement.getTailVariables().clone();
+                            expandedNodes.addAll(cgUtility.getContinuousVariables());
+                            cgUtility.expand(expandedNodes);
+                            cgUtility = cgUtility.marginalizeContinuousChanceVariable(node, complement);
                         }
-                        logger.debug("newPChance" + newPChance);
-                        logger.debug("newPUtility" + newPUtility);
-                        pChance = newPChance;
-                        pUtility = newPUtility;
-
-                        nodesToEliminateTogether = new HashSet<Node>();
-                        nodesToEliminateTogether.add(node);
-                        prevGroupNumber = nodeGroupNumber;
+                        cgChance = cgChance.headMarginal(headMarginalNodes);
+                        processedNodes.add(node);
                     }
                 }
-                logger.debug("nodesToEliminateTogether = " + nodesToEliminateTogether);
-                projectionNodes.removeAll(nodesToEliminateTogether);
-                Potential newPChance;
-                Potential newPUtility;
-                if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Chance) {
-                    newPChance = pChance.project(projectionNodes);
-                    newPUtility = pChance.multiply(pUtility).project(projectionNodes).divide(newPChance);
-                } else if (nodesToEliminateTogether.iterator().next().getCategory() == Node.Category.Decision) {
-                    newPChance = pChance.maxProject(projectionNodes, pChance.multiply(pUtility)).getPotential();
-                    newPUtility = pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(newPChance);
-                    logger.debug("maxState = " + pChance.multiply(pUtility).maxProject(projectionNodes).getMaxState());
-                    logger.debug("MEU = " + pChance.multiply(pUtility).maxProject(projectionNodes).getPotential().divide(pChance));
-                } else {
-                    throw new UnsupportedOperationException("Cannot eliminate a utility node.");
+
+                orderedEliminatedNodes.removeAll(processedNodes);
+                for (Node node : orderedEliminatedNodes) {
+                    CGUtility.ContinuousDecisionMarginalAnswer a = cgUtility.marginalizeContinuousDecisionVariable(node);
+                    cgUtility = a.getCgUtility();
+//                    System.out.println("a.getIntercept() = " + a.getIntercept());
+//                    System.out.println("a.getRegressionFactor() = " + a.getRegressionFactor());
                 }
-                logger.debug("newPChance" + newPChance);
-                logger.debug("newPUtility" + newPUtility);
-                pChance = newPChance;
-                pUtility = newPUtility;
+
+                cgChance.reduce();
+                logger.debug("newCGChance = " + cgChance);
+                logger.debug("newCGUtility = " + cgUtility);
+
 
                 if (!sjt.getChildren(jtNode).isEmpty()) {
                     JunctionTreeNode<Node> child = sjt.getChildren(jtNode).iterator().next();
-                    Potential chanceMessage = chanceMessages.get(child);
-                    Potential utilityMessage = utilityMessages.get(child);
-                    chanceMessages.put(child, chanceMessage.multiply(pChance));
-                    utilityMessages.put(child, utilityMessage.add(pUtility));
+                    CGPotential chanceMessage = chanceMessages.get(child);
+                    CGUtility utilityMessage = utilityMessages.get(child);
+                    chanceMessages.put(child, chanceMessage.recursiveCombination(cgChance));
+                    utilityMessages.put(child, utilityMessage.add(cgUtility));
                 }
+
+                if (projectionNodes.isEmpty())
+                    logger.info("MEU = " + cgUtility.getS().getData()[0]);
+
             }
         }
     }
 
-    private Map<Edge<JunctionTreeNode<Node>>, Potential> getInitializedMessages(AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jt) {
-        Map<Edge<JunctionTreeNode<Node>>, Potential> messages = new HashMap<Edge<JunctionTreeNode<Node>>, Potential>();
+    private Map<Edge<JunctionTreeNode<Node>>, CGPotential> getInitializedMessages(AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jt) {
+        Map<Edge<JunctionTreeNode<Node>>, CGPotential> messages = new HashMap<Edge<JunctionTreeNode<Node>>, CGPotential>();
 
         for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
             if (jtNode instanceof SeparatorNode)
                 for (JunctionTreeNode<Node> adjacent : jt.getAdjacents(jtNode))
-                    messages.put(new Edge<JunctionTreeNode<Node>>(jtNode, adjacent), Potential.unityPotential());
+                    messages.put(new Edge<JunctionTreeNode<Node>>(jtNode, adjacent), CGPotential.unityPotential());
         }
         return messages;
     }
 
-    private Map<JunctionTreeNode<Node>, Potential> getUtilityInitializedMessages(DirectedGraph<JunctionTreeNode<Node>> jt) {
-        Map<JunctionTreeNode<Node>, Potential> messages = new HashMap<JunctionTreeNode<Node>, Potential>();
+    private Map<JunctionTreeNode<Node>, CGUtility> getUtilityInitializedMessages(DirectedGraph<JunctionTreeNode<Node>> jt) {
+        Map<JunctionTreeNode<Node>, CGUtility> messages = new HashMap<JunctionTreeNode<Node>, CGUtility>();
 
         for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
             if (jtNode instanceof SeparatorNode)
-                messages.put(jtNode, Potential.zeroPotential());
+                messages.put(jtNode, CGUtility.zeroUtility());
         }
         return messages;
     }
 
-    private Map<JunctionTreeNode<Node>, Potential> getChanceInitializedMessages(DirectedGraph<JunctionTreeNode<Node>> jt) {
-        Map<JunctionTreeNode<Node>, Potential> messages = new HashMap<JunctionTreeNode<Node>, Potential>();
+    private Map<JunctionTreeNode<Node>, CGPotential> getChanceInitializedMessages(DirectedGraph<JunctionTreeNode<Node>> jt) {
+        Map<JunctionTreeNode<Node>, CGPotential> messages = new HashMap<JunctionTreeNode<Node>, CGPotential>();
 
         for (JunctionTreeNode<Node> jtNode : jt.getNodes()) {
             if (jtNode instanceof SeparatorNode)
-                messages.put(jtNode, Potential.unityPotential());
+                messages.put(jtNode, CGPotential.unityPotential());
         }
         return messages;
     }
 
-    private Map<JunctionTreeNode<Node>, Set<Potential>> getChanceCliquePotentials(DirectedGraph<Node> graph, AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jtree) {
-        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = new HashMap<JunctionTreeNode<Node>, Set<Potential>>();
+    private Map<JunctionTreeNode<Node>, Set<CGPotential>> getChanceCliquePotentials(DirectedGraph<Node> graph, AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jtree) {
+        Map<JunctionTreeNode<Node>, Set<CGPotential>> cliquePotentials = new HashMap<JunctionTreeNode<Node>, Set<CGPotential>>();
         Set<Node> nodesCopy = new HashSet<Node>(graph.getNodes());
         for (JunctionTreeNode<Node> jtNode : jtree.getNodes()) {
             if (jtNode instanceof CliqueNode) {
                 Set<Node> nodesToRemove = new HashSet<Node>();
                 for (Node node : nodesCopy) {
                     if (node.getCategory() == Node.Category.Chance && jtNode.getMembers().containsAll(graph.getFamily(node))) {
-                        Potential p = getNodePotential(node);
+                        CGPotential p = (CGPotential) getNodePotential(node);
                         if (cliquePotentials.containsKey(jtNode))
                             cliquePotentials.get(jtNode).add(p);
                         else {
-                            Set<Potential> s = new HashSet<Potential>();
+                            Set<CGPotential> s = new HashSet<CGPotential>();
                             s.add(p);
                             cliquePotentials.put(jtNode, s);
                         }
@@ -432,8 +454,8 @@ public class LQGInfluenceDiagram {
                 }
                 nodesCopy.removeAll(nodesToRemove);
                 if (!cliquePotentials.containsKey(jtNode)) {
-                    Set<Potential> s = new HashSet<Potential>();
-                    s.add(Potential.unityPotential());
+                    Set<CGPotential> s = new HashSet<CGPotential>();
+                    s.add(CGPotential.unityPotential());
                     cliquePotentials.put(jtNode, s);
                 }
             }
@@ -441,19 +463,19 @@ public class LQGInfluenceDiagram {
         return cliquePotentials;
     }
 
-    private Map<JunctionTreeNode<Node>, Set<Potential>> getUtilityCliquePotentials(DirectedGraph<Node> graph, AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jtree) {
-        Map<JunctionTreeNode<Node>, Set<Potential>> cliquePotentials = new HashMap<JunctionTreeNode<Node>, Set<Potential>>();
+    private Map<JunctionTreeNode<Node>, Set<CGUtility>> getUtilityCliquePotentials(DirectedGraph<Node> graph, AbstractGraph<JunctionTreeNode<Node>, ? extends AbstractVertex> jtree) {
+        Map<JunctionTreeNode<Node>, Set<CGUtility>> cliquePotentials = new HashMap<JunctionTreeNode<Node>, Set<CGUtility>>();
         Set<Node> nodesCopy = new HashSet<Node>(graph.getNodes());
         for (JunctionTreeNode<Node> jtNode : jtree.getNodes()) {
             if (jtNode instanceof CliqueNode) {
                 Set<Node> nodesToRemove = new HashSet<Node>();
                 for (Node node : nodesCopy) {
                     if (node.getCategory() == Node.Category.Utility && jtNode.getMembers().containsAll(graph.getParents(node))) {
-                        Potential p = getNodePotential(node);
+                        CGUtility p = (CGUtility) getNodePotential(node);
                         if (cliquePotentials.containsKey(jtNode))
                             cliquePotentials.get(jtNode).add(p);
                         else {
-                            Set<Potential> s = new HashSet<Potential>();
+                            Set<CGUtility> s = new HashSet<CGUtility>();
                             s.add(p);
                             cliquePotentials.put(jtNode, s);
                         }
@@ -462,8 +484,8 @@ public class LQGInfluenceDiagram {
                 }
                 nodesCopy.removeAll(nodesToRemove);
                 if (!cliquePotentials.containsKey(jtNode)) {
-                    Set<Potential> s = new HashSet<Potential>();
-                    s.add(Potential.zeroPotential());
+                    Set<CGUtility> s = new HashSet<CGUtility>();
+                    s.add(CGUtility.zeroUtility());
                     cliquePotentials.put(jtNode, s);
                 }
             }

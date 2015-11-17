@@ -4,6 +4,7 @@ import org.ejml.simple.SimpleMatrix;
 import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.graph.Visualizable;
 import org.uci.lids.utils.CGPotential;
+import org.uci.lids.utils.CGUtility;
 import org.uci.lids.utils.MatrixPotential;
 import org.uci.lids.utils.Potential;
 
@@ -52,6 +53,49 @@ public class Node implements Visualizable, Comparable<Node> {
             return null;
     }
 
+    public CGUtility getCGUtility(DirectedGraph<Node> bayesianNetwork) {
+        Potential p;
+        MatrixPotential Q;
+        MatrixPotential R;
+        Potential S;
+        Set<Node> parents = bayesianNetwork.getParents(this);
+        LinkedHashSet<Node> discreteParents = new LinkedHashSet<Node>();
+        LinkedHashSet<Node> continuousParents = new LinkedHashSet<Node>();
+        for (Node n : parents) {
+            if (n.getVariableType() == VariableType.Categorical)
+                discreteParents.add(n);
+            else
+                continuousParents.add(n);
+        }
+
+        if (variableType == VariableType.Categorical) {
+            p = getPotential(bayesianNetwork);
+            Q = new MatrixPotential(p.getVariables());
+            R = new MatrixPotential(p.getVariables());
+            S = new Potential(p.getVariables());
+            return new CGUtility(p.getVariables(), new LinkedHashSet<Node>(),
+                    Q, R, S);
+        } else if (variableType == VariableType.Continuous) {
+            assert category == Category.Utility : "Node category has to be Utility";
+            Q = new MatrixPotential(discreteParents);
+            R = new MatrixPotential(discreteParents);
+            int counter = 0;
+            for (int i = 0; i < Q.getTotalSize(); i++) {
+                Q.getData()[i] = new SimpleMatrix(continuousParents.size(), continuousParents.size(), true,
+                        Arrays.copyOfRange(potentialArray, counter, counter + continuousParents.size() * continuousParents.size()));
+                counter += continuousParents.size() * continuousParents.size();
+            }
+            for (int i = 0; i < R.getTotalSize(); i++) {
+                R.getData()[i] = new SimpleMatrix(1, continuousParents.size(), true,
+                        Arrays.copyOfRange(potentialArray, counter, counter + continuousParents.size()));
+                counter += continuousParents.size();
+            }
+            S = new Potential(discreteParents, Arrays.copyOfRange(potentialArray, counter, counter + Q.getTotalSize()));
+            return new CGUtility(discreteParents, continuousParents, Q, R, S);
+        }
+        return null;
+    }
+
     public CGPotential getCGPotential(DirectedGraph<Node> bayesianNetwork) {
         Potential p;
         MatrixPotential means;
@@ -75,6 +119,7 @@ public class Node implements Visualizable, Comparable<Node> {
             return new CGPotential(p.getVariables(), new LinkedHashSet<Node>(), new LinkedHashSet<Node>(), p,
                     means, regCoeffs, variances);
         } else if (variableType == VariableType.Continuous) {
+            assert category == Category.Chance : "Node category has to be Chance";
             p = Potential.unityPotential().add(new Potential(discreteParents));
             means = new MatrixPotential(discreteParents);
             regCoeffs = new MatrixPotential(discreteParents);

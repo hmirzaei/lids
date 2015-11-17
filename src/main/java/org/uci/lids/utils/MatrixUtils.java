@@ -28,7 +28,10 @@ public class MatrixUtils {
         SimpleMatrix result = new SimpleMatrix(rows.length, columns.length);
         for (int i = 0; i < rows.length; i++) {
             for (int j = 0; j < columns.length; j++) {
-                result.set(i, j, m.get(rows[i], columns[j]));
+                if ((rows[i] == -1) || (columns[j] == -1))
+                    result.set(i, j, 0);
+                else
+                    result.set(i, j, m.get(rows[i], columns[j]));
             }
         }
         return result;

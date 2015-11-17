@@ -53,11 +53,11 @@ public class CGPotentialTest
         return new TestSuite(CGPotentialTest.class);
     }
 
-    private static CGPotential getCgPotential(Node[] discreteVars, Node[] head, Node[] tail) {
+    public static CGPotential getCgPotential(Node[] discreteVars, Node[] head, Node[] tail) {
         LinkedHashSet<Node> head2 = new LinkedHashSet<Node>(new LinkedHashSet<Node>(Arrays.asList(head)));
         LinkedHashSet<Node> tail2 = new LinkedHashSet<Node>(new LinkedHashSet<Node>(Arrays.asList(tail)));
         LinkedHashSet<Node> discreteVars2 = new LinkedHashSet<Node>(new LinkedHashSet<Node>(Arrays.asList(discreteVars)));
-        Random r = new Random();
+        Random r = new Random(1);
         double[] potData = new double[1 << discreteVars.length];
         for (int i = 0; i < potData.length; i++) {
             potData[i] = r.nextDouble();
@@ -85,7 +85,7 @@ public class CGPotentialTest
                 data[j] = r.nextDouble();
             }
             variancesData[i] = new SimpleMatrix(head.length, head.length, false, data);
-            variancesData[i] = variancesData[i].mult(variancesData[i].transpose());
+            variancesData[i] = variancesData[i].mult(variancesData[i].transpose()).scale(0);
         }
         Potential p = new Potential(discreteVars2, potData);
         MatrixPotential means = new MatrixPotential(discreteVars2, meansData);
