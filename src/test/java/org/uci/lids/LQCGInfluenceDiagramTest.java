@@ -3,6 +3,7 @@ package org.uci.lids;
 import junit.framework.Test;
 import junit.framework.TestCase;
 import junit.framework.TestSuite;
+import org.apache.log4j.Logger;
 import org.ejml.simple.SimpleMatrix;
 import org.uci.lids.graph.DirectedGraph;
 import org.uci.lids.utils.CGPotential;
@@ -17,6 +18,7 @@ import java.util.*;
 public class LQCGInfluenceDiagramTest
         extends TestCase {
 
+    final static Logger logger = Logger.getLogger(LQCGInfluenceDiagram.class);
 
     /**
      * Create the test case
@@ -42,23 +44,21 @@ public class LQCGInfluenceDiagramTest
 
     public void testInfluenceDiagramSolving() {
         List<Node> nodes = new ArrayList<Node>();
-        int N = 27;
+        int N = 100;
         DirectedGraph<Node> bn = new DirectedGraph<Node>();
 
+        logger.info("Start Creating Graph");
         createGraph(nodes, N, bn);
-//        Integer[] nodesToRemove = new Integer[]{};
-//        Arrays.sort(nodesToRemove, Collections.reverseOrder());
-//        for (int i : nodesToRemove)
-//            bn.removeNode(nodes.get(i));
-//
-//        for (int i: nodesToRemove)
-//            nodes.remove(i);
 
+        logger.info("Start Writing Graph html");
         Misc.saveGraphOnDisk("graph", bn);
 
+        logger.info("Start Filling potentials");
         FillPotentialArrays(nodes, bn);
+        logger.info("Start Writing CVX Script");
         Misc.writeCvxScript("cvxscript.m", bn, nodes);
 
+        logger.info("Start Solving LQCG ID");
         LQCGInfluenceDiagram lid = new LQCGInfluenceDiagram(bn);
         lid.getOptimalStrategy();
     }

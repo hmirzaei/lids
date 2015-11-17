@@ -284,19 +284,15 @@ public class LQCGInfluenceDiagram {
                 Set<JunctionTreeNode<Node>> parents = sjt.getParents(jtNode);
                 logger.debug("parents = " + parents);
 
-                Set<CGPotential> nodeChanceMessages = new HashSet<CGPotential>(chanceCliquePotentials.get(jtNode));
-                Set<CGUtility> nodeUtilityMessages = new HashSet<CGUtility>(utilityCliquePotentials.get(jtNode));
-                for (JunctionTreeNode<Node> member : parents) {
-                    nodeChanceMessages.add(chanceMessages.get(member));
-                    nodeUtilityMessages.add(utilityMessages.get(member));
-                }
+                Set<CGPotential> nodeCliqueChanceMessages = new HashSet<CGPotential>(chanceCliquePotentials.get(jtNode));
+                Set<CGUtility> nodeCliqueUtilityMessages = new HashSet<CGUtility>(utilityCliquePotentials.get(jtNode));
 
-                logger.debug("nodeChanceMessages = " + nodeChanceMessages);
-                logger.debug("nodeUtilityMessages = " + nodeUtilityMessages);
+                logger.debug("nodeCliqueChanceMessages = " + nodeCliqueChanceMessages);
+                logger.debug("nodeCliqueUtilityMessages = " + nodeCliqueUtilityMessages);
 
                 Set<Node> continuousNodes = new HashSet<Node>();
                 Map<Node, CGPotential> nodeCGPotentials = new HashMap<Node, CGPotential>();
-                for (CGPotential c : nodeChanceMessages) {
+                for (CGPotential c : nodeCliqueChanceMessages) {
                     continuousNodes.addAll(c.getHeadVariables());
                     continuousNodes.addAll(c.getTailVariables());
                     if (!c.getHeadVariables().isEmpty())
@@ -316,15 +312,27 @@ public class LQCGInfluenceDiagram {
                         cgChance = cgChance.directCombination(nodeCGPotentials.get(sortedNodes.get(i)));
                     }
                 } else {
-                    cgChance = nodeChanceMessages.iterator().next();
+                    cgChance = nodeCliqueChanceMessages.iterator().next();
                 }
 
-                Iterator<CGUtility> utilityIterator = nodeUtilityMessages.iterator();
+                Iterator<CGUtility> utilityIterator = nodeCliqueUtilityMessages.iterator();
                 CGUtility cgUtility = utilityIterator.next();
 
                 while (utilityIterator.hasNext()) {
                     cgUtility = cgUtility.add(utilityIterator.next());
                 }
+                Set<CGPotential> nodeChanceMessages = new HashSet<CGPotential>();
+                Set<CGUtility> nodeUtilityMessages = new HashSet<CGUtility>();
+                for (JunctionTreeNode<Node> member : parents) {
+                    nodeChanceMessages.add(chanceMessages.get(member));
+                    nodeUtilityMessages.add(utilityMessages.get(member));
+                }
+
+                for (CGPotential cg : nodeChanceMessages)
+                    cgChance = cgChance.recursiveCombination(cg);
+
+                for (CGUtility cgu : nodeUtilityMessages)
+                    cgUtility = cgUtility.add(cgu);
 
                 logger.debug("cgChance = " + cgChance);
                 logger.debug("cgUtility = " + cgUtility);
